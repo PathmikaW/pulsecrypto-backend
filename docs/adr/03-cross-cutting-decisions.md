@@ -258,24 +258,26 @@ failure rather than an immediate, obvious one.
 developer, in their own terminal, using each framework's official setup path** —
 never generated or approximated by an AI coding session. This applies specifically to:
 
-- **Backend:** `pnpm create fastify` — invokes `create-fastify`
-  (`github.com/fastify/create-fastify`), an official generator maintained under the
-  Fastify GitHub org itself, currently v5.0.0. This was checked twice, with two different
-  results, and it's worth recording both rather than only the final answer: the framework's
-  main Getting Started guide (`fastify.dev/docs/latest/Guides/Getting-Started/`) shows only
-  `npm i fastify` / `yarn add fastify` plus a hand-written `server.js`, with no generator —
-  which led an earlier version of this ADR to conclude, wrongly, that Fastify has no
-  official generator at all. It has one; it's just documented on its own repository rather
-  than featured on that particular guide page. `create-fastify`'s own README documents
-  `npm init fastify [app-name]` as the invocation; pnpm's `create` command is confirmed (via
-  pnpm's own docs) to be a general mechanism for any `create-*`-named package with no
-  per-package support required, so `pnpm create fastify` is the correct, verified pnpm
-  equivalent — the same shape as `pnpm create expo-app` below, not `pnpm init` (which only
-  creates a bare `package.json`, no generator involved at all).
+- **Backend:** `pnpm dlx fastify-cli generate . --lang=ts` — invokes `fastify-cli`'s
+  `generate` command directly, **not** `pnpm create fastify`. This decision went through
+  three checks, not one, and all three are worth keeping rather than only the final answer:
+  (1) the framework's main Getting Started guide shows no generator at all, which wrongly
+  suggested none existed; (2) `create-fastify` (`github.com/fastify/create-fastify`) turned
+  out to be a real, Fastify-org-maintained generator, invoked via `pnpm create fastify
+  --lang=ts` — verified to produce genuine TypeScript output; (3) directly comparing that
+  output against `pnpm dlx fastify-cli generate . --lang=ts` found `create-fastify`
+  resolves noticeably older pinned dependencies (`fastify-cli` 7.4.1, TypeScript 5.9.2)
+  than calling `fastify-cli` directly (`fastify-cli` 8.0.2, TypeScript 6.0.2) — `fastify-cli`
+  itself is the more actively current path, and `create-fastify` appears to lag behind it.
+  §5's tech stack table reflects the TypeScript 6.0.x this actually resolved to, corroborated
+  independently by mobile's own scaffold. Both `fastify-cli` and `create-fastify` are
+  legitimate official Fastify tools; this project uses the one verified to be more current.
 - **Mobile:** `pnpm create expo-app` (see Package Manager decision below) for initial
   project generation — verified directly against `docs.expo.dev/get-started/create-a-project/`,
   which documents pnpm as a first-class option alongside npm/yarn/bun — and
-  `npx expo prebuild` for generating the native `android/`/`ios/` directories (ADR-M1).
+  `pnpm expo prebuild` for generating the native `android/`/`ios/` directories (ADR-M1;
+  `pnpm expo ...`, not `npx expo ...` — see §5's install-rule note on the verified pnpm
+  binary-shorthand mechanism).
 - Any future equivalent: if a new top-level framework or native module is ever introduced
   that has its own official generator/installer, that generator is run manually too — this
   is a standing rule, not a one-time exception for the two cases above.
@@ -294,12 +296,12 @@ explicitly, the same as every other tool choice in this document:
 install speed — it's a correctness property consistent with this document's broader
 emphasis on enforced (not just named) architectural boundaries (see ADR-B7, ADR-M8): a
 dependency that isn't declared in `package.json` simply won't resolve, rather than working
-by accident because some other package hoisted it into `node_modules`. Both official
-scaffolding paths verified to support pnpm: Expo documents `pnpm create expo-app`
-natively in its own docs; `create-fastify`'s pnpm compatibility is inferred from pnpm's own
-general `create` mechanism (any `create-*`-named package, no per-package support
-required) rather than being explicitly stated by the Fastify team — a slightly lower
-confidence level than Expo's case, worth verifying when actually run at scaffold time.
+by accident because some other package hoisted it into `node_modules`. Both scaffolding
+paths confirmed working with pnpm by actually running them, not just by reading docs:
+`pnpm create expo-app` (Expo documents pnpm natively) and `pnpm dlx fastify-cli generate .
+--lang=ts` (a direct `pnpm dlx` invocation of an npm-registry package — no
+package-manager-specific behavior to verify at all, since `dlx` just runs the package's own
+CLI once).
 
 **Practical implications, applied consistently everywhere npm was previously assumed:**
 - Lockfile: `pnpm-lock.yaml`, committed in both repos (never gitignored).
