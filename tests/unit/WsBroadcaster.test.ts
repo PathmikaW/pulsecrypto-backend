@@ -18,6 +18,7 @@ const update: MarketUpdate = {
   timestamp: 1,
   lastUpdatedAt: 1,
   price: 1,
+  change24h: 0,
   spread: 1,
   buyPressure: 50,
   sellPressure: 50,

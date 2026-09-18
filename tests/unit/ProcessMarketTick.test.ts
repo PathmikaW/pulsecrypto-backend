@@ -13,6 +13,7 @@ describe('processMarketTick', () => {
     const state: PairState = {
       ...createEmptyPairState('BTCUSDT'),
       price: 65000,
+      change24h: -2.5,
       bids: [{ price: 64999, quantity: 1 }],
       asks: [{ price: 65001, quantity: 1 }],
     };
@@ -25,6 +26,7 @@ describe('processMarketTick', () => {
     const update = (broadcaster.broadcast as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(update.pair).toBe('BTCUSDT');
     expect(update.price).toBe(65000);
+    expect(update.change24h).toBe(-2.5);
     expect(update.lastUpdatedAt).toBe(1_700_000_000_000);
     expect(update.timestamp).toBe(1_700_000_000); // seconds, not ms
     expect(update.spread).toBe(2); // 65001 - 64999

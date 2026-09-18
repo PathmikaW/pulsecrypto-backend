@@ -8,6 +8,8 @@ export interface MarketUpdate {
   /** ms epoch — same tick's wall-clock time, set ONCE by the conflation engine at broadcast time */
   lastUpdatedAt: number;
   price: number;
+  /** percentage, from the @ticker stream — signed, e.g. -2.5 for a 2.5% drop */
+  change24h: number;
   spread: number;
   buyPressure: number;
   sellPressure: number;

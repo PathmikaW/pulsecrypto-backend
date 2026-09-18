@@ -15,6 +15,7 @@ export const MarketUpdateSchema = z.object({
   timestamp: z.number(),
   lastUpdatedAt: z.number(),
   price: z.number(),
+  change24h: z.number(),
   spread: z.number(),
   buyPressure: z.number(),
   sellPressure: z.number(),

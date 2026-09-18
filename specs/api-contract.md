@@ -20,6 +20,7 @@ identical broadcast, for every currently-tracked pair, every tick.
   "timestamp": 1720802025,
   "lastUpdatedAt": 1720802025123,
   "price": 109235.42,
+  "change24h": -2.5,
   "spread": 0.41,
   "buyPressure": 63,
   "sellPressure": 37,
@@ -47,6 +48,7 @@ Returns metadata for every currently-tracked pair (the resolved list from ADR-B3
 necessarily just the five required pairs).
 
 **Response 200:**
+
 ```json
 {
   "pairs": [
@@ -54,14 +56,15 @@ necessarily just the five required pairs).
       "symbol": "BTCUSDT",
       "displayName": "BTC/USDT",
       "tradingStatus": "TRADING",
-      "high24h": 110500.00,
-      "low24h": 107200.00,
+      "high24h": 110500.0,
+      "low24h": 107200.0,
       "volume24h": 18234.552
     }
   ],
   "resolvedAt": "2026-09-17T10:00:00.000Z"
 }
 ```
+
 - Source: real data from Binance `GET /api/v3/ticker/24hr`, filtered to the resolved pair
   list, cached in-process for 60 seconds (ADR-B6).
 - Fallback: if Binance is unreachable, return mock data for the five required pairs only;
@@ -84,6 +87,7 @@ ADR-B8 — `pulsecrypto_ws_connections_active`, `pulsecrypto_ws_messages_broadca
 ## Error responses (all REST routes)
 
 Standard shape, validated by Fastify's JSON Schema integration:
+
 ```json
 { "statusCode": 400, "error": "Bad Request", "message": "..." }
 ```
