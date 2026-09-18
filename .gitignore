@@ -1,14 +1,14 @@
 # Dependencies
 node_modules/
+jspm_packages/
 
 # Build output
 dist/
-build/
 *.tsbuildinfo
 
-# Secrets — never commit real env files, only .env.example
+# Secrets — never commit real env files, only .env.example (ADR-B9)
 .env
-.env.*
+.env*
 !.env.example
 *.pem
 *.key
@@ -17,12 +17,24 @@ build/
 
 # Test / coverage
 coverage/
+.nyc_output
 
 # Logs
+logs
 *.log
 npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Fastify-generated quirks (kept from the official scaffold)
+examples/typescript-server.js
+test/types/index.js
 
 # OS / editor
 .DS_Store
 .vscode/
 .idea/
+*.swp
