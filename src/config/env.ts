@@ -14,6 +14,11 @@ const envSchema = z.object({
   BROADCAST_INTERVAL_MS: z.coerce.number().int().positive().default(100),
   MAX_BUFFERED_BYTES: z.coerce.number().int().positive().default(65536),
   MAX_CONSECUTIVE_SKIPS: z.coerce.number().int().positive().default(10),
+
+  // Overridable so integration tests / a future testnet switch can point the Binance
+  // adapters elsewhere without touching adapter code — real Binance endpoints by default.
+  BINANCE_REST_BASE_URL: z.string().url().default('https://api.binance.com'),
+  BINANCE_WS_BASE_URL: z.string().url().default('wss://stream.binance.com:9443/stream'),
 });
 
 export type Env = z.infer<typeof envSchema>;

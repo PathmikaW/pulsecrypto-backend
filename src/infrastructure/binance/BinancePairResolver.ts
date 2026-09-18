@@ -1,8 +1,7 @@
 import type { PairResolver } from '../../domain/ports/PairResolver.js';
+import { isEligibleTradingPair } from '../../domain/services/PairEligibility.js';
 import { logger } from '../observability/Logger.js';
-
-const LEVERAGED_SUFFIX_PATTERN = /(UP|DOWN|BULL|BEAR)USDT$/;
-const EXCLUDED_QUOTE_ADJACENT_BASES = new Set(['USDC', 'FDUSD', 'DAI', 'TUSD', 'USD1', 'PYUSD', 'USDG']);
+import { env } from '../../config/env.js';
 
 interface ExchangeInfoSymbol {
   symbol: string;
@@ -39,7 +38,10 @@ export type FetchJsonFn = typeof fetchJson;
 
 /** Implements PairResolver — full logic and rationale in ADR-B3 / specs/pair-resolution-strategy.md. */
 export class BinancePairResolver implements PairResolver {
-  constructor(private readonly fetchJsonImpl: FetchJsonFn = fetchJson) {}
+  constructor(
+    private readonly fetchJsonImpl: FetchJsonFn = fetchJson,
+    private readonly restBaseUrl: string = env.BINANCE_REST_BASE_URL
+  ) {}
 
   async resolveSupportedPairs(requiredSymbols: string[], extraCount: number, timeoutMs: number): Promise<string[]> {
     const controller = new AbortController();
@@ -47,8 +49,8 @@ export class BinancePairResolver implements PairResolver {
 
     try {
       const [info, tickers] = await Promise.all([
-        this.fetchJsonImpl<ExchangeInfoResponse>('https://api.binance.com/api/v3/exchangeInfo', controller.signal),
-        this.fetchJsonImpl<Ticker24hr[]>('https://api.binance.com/api/v3/ticker/24hr', controller.signal),
+        this.fetchJsonImpl<ExchangeInfoResponse>(`${this.restBaseUrl}/api/v3/exchangeInfo`, controller.signal),
+        this.fetchJsonImpl<Ticker24hr[]>(`${this.restBaseUrl}/api/v3/ticker/24hr`, controller.signal),
       ]);
 
       const tradable = new Set(
@@ -58,8 +60,7 @@ export class BinancePairResolver implements PairResolver {
               s.status === 'TRADING' &&
               s.quoteAsset === 'USDT' &&
               s.isSpotTradingAllowed &&
-              !LEVERAGED_SUFFIX_PATTERN.test(s.symbol) &&
-              !EXCLUDED_QUOTE_ADJACENT_BASES.has(s.baseAsset)
+              isEligibleTradingPair(s.symbol, s.baseAsset)
           )
           .map((s) => s.symbol)
       );

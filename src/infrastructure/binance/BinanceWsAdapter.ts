@@ -3,15 +3,18 @@ import type { MarketDataSource } from '../../domain/ports/MarketDataSource.js';
 import type { BinanceStreamUpdate } from '../../domain/models/BinanceStreamUpdate.js';
 import { parseStreamMessage } from './BinanceMessageParser.js';
 import { logger } from '../observability/Logger.js';
+import { env } from '../../config/env.js';
 
-const BASE_URL = 'wss://stream.binance.com:9443/stream';
+// Reconnection backoff timing — single-use implementation detail of this adapter, not
+// deployment-configurable (same treatment ADR-M6 gives the mobile client's fixed backoff
+// schedule), so it stays local rather than moving to config/env.ts.
 const INITIAL_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30000;
 
 /** Builds the combined-stream URL: <symbol>@depth20@100ms/<symbol>@ticker per resolved pair (ADR-B3). */
-export function buildStreamUrl(pairs: string[]): string {
+export function buildStreamUrl(pairs: string[], baseUrl: string = env.BINANCE_WS_BASE_URL): string {
   const streams = pairs.flatMap((p) => [`${p.toLowerCase()}@depth20@100ms`, `${p.toLowerCase()}@ticker`]);
-  return `${BASE_URL}?streams=${streams.join('/')}`;
+  return `${baseUrl}?streams=${streams.join('/')}`;
 }
 
 /** Implements MarketDataSource — connects using the resolved pair list (ADR-B7). */
