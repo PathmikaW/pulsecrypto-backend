@@ -250,6 +250,13 @@ Three-stage Husky pipeline: `pre-commit` (lint-staged: eslint --fix + prettier),
    first, referencing the relevant ADR-B* section.
 2. Implement against the spec.
 3. Write tests derived from the spec's stated behavior, not from your own implementation.
-4. Leave everything uncommitted for review.
-5. If something in the spec or ADR seems wrong or you want to deviate, say so and wait —
+4. Verify directly before calling anything done — run the build and the test suite
+   yourself, don't just eyeball the code (ADR-X6).
+5. Review the diff (`git status`/`git diff`), then commit with a conventional-format
+   message — no AI attribution trailer. Never push or merge; that's the user's alone.
+6. **Always end by giving the user exact terminal commands to independently verify what
+   was just built** (install/build/test, and a live/manual check if one makes sense for
+   the feature) — don't just assert it works, hand them the means to confirm it
+   themselves, every time, not only when asked.
+7. If something in the spec or ADR seems wrong or you want to deviate, say so and wait —
    don't implement your own alternative silently.
