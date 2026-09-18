@@ -4,7 +4,7 @@
 
 **Package manager: pnpm for both repos** (ADR-X5 — options considered, verified directly against both Fastify's and Expo's own getting-started docs). Lockfile is `pnpm-lock.yaml`, committed in both repos. Any `npm install`/`npm i` elsewhere in this document should be read as `pnpm add` unless it's quoting an external tool's own doc text verbatim.
 
-**Install rule for anything with native code:** for `react-native-reanimated`, `react-native-mmkv`, `expo-localization`, and any future native module, install via `npx expo install <package>` rather than `pnpm add`. Expo resolves the specific version known-compatible with the installed SDK automatically — this matters more than for a typical package, because an incompatible native-module version can fail at build time in a way plain semver ranges won't catch. (Expo's CLI is invoked via `npx` here regardless of package manager, since it's Expo's own version-resolution logic doing the work, not a plain package fetch — this is consistent with `pnpm create expo-app` also being an npx-style one-shot invocation under the hood.)
+**Install rule for anything with native code:** for `react-native-reanimated`, `react-native-mmkv`, `expo-localization`, and any future native module, install via `pnpm expo install <package>` rather than plain `pnpm add`. Expo resolves the specific version known-compatible with the installed SDK automatically — this matters more than for a typical package, because an incompatible native-module version can fail at build time in a way plain semver ranges won't catch. (`pnpm expo ...` — not `npx expo ...` — is correct here: verified directly against pnpm's own docs that `pnpm <binary>` is a shorthand for `pnpm exec <binary>` for any locally installed package binary that doesn't collide with a pnpm builtin command, and `expo` is a local dependency once the project is scaffolded. This stays entirely inside the pnpm toolchain rather than reaching for npm's `npx`. Same applies to `pnpm expo prebuild` / `pnpm expo run:android` — confirmed working directly, not just theoretically equivalent.)
 
 ### Backend
 
@@ -12,7 +12,7 @@
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime          | Node.js                                                                                                                | **24.x (Active LTS)** — Node 24 is the current Active LTS line; Node 22 is now in maintenance-only mode                                             |
 | Package manager  | pnpm                                                                                                                    | Enabled via Node's built-in Corepack (`corepack enable`) — see ADR-X5                                                                                |
-| Language         | TypeScript                                                                                                             | **5.9.x**                                                                                                                                            |
+| Language         | TypeScript                                                                                                             | **6.0.x** (was 5.9.x as of this document's original check; superseded — confirmed 6.0.2 via `pnpm dlx fastify-cli generate . --lang=ts`, independently corroborated by mobile's Expo scaffold resolving 6.0.3 the day before)                                                                                                                                            |
 | HTTP framework   | Fastify                                                                                                                | **5.6.x**                                                                                                                                            |
 | WebSocket        | `ws`                                                                                                                 | 8.x (stable, long-running major — confirm exact minor at scaffold)                                                                                        |
 | Validation       | Zod                                                                                                                    | 4.x (Zod 4 is current; confirm at scaffold — schema syntax changed from Zod 3, so this is worth checking deliberately rather than assuming compatibility) |
@@ -24,13 +24,25 @@
 | Linting          | ESLint (flat config) + Prettier                                                                                        | **ESLint 9.39.x**, Prettier 3.6.x                                                                                                                    |
 | Containerization | Docker,`node:24-alpine` base image                                                                                   | —                                                                                                                                                         |
 
+> **Callout — TypeScript 6.0 requires `rootDir` explicitly, where 5.x didn't.** The
+> official Fastify TS scaffold's `tsconfig.json` extends `fastify-tsconfig`, which doesn't
+> set `rootDir` — TypeScript 5.x inferred it fine, but 6.0 raises `error TS5011` ("The
+> common source directory... The 'rootDir' setting must be explicitly set") as soon as
+> `outDir` is also set, which the scaffold does. Fix: add `"rootDir": "src"` to
+> `compilerOptions` alongside `"outDir": "dist"`. This is a `fastify-tsconfig` compatibility
+> gap with TS 6.0 that hadn't been patched upstream as of this scaffold — re-check whether
+> it's still needed if `fastify-tsconfig` has caught up by the time this is read again.
+> Verified by actually compiling (`pnpm run build:ts`, exit 0, real output in `dist/`) and
+> starting the server (`pnpm start`, confirmed listening on `localhost:3000` via `lsof`),
+> not just by the absence of an error message.
+
 ### Mobile
 
 | Concern            | Choice                                                                                          | Current version (verified)                                                                                                                            |
 | ------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Framework          | Expo (Dev Client / Prebuild)                                                                    | **SDK 57** (React Native 0.86, React 19.2) — see the callout below; SDK 58 is in beta as of this writing and not yet the stable recommendation |
 | Package manager    | pnpm                                                                                            | `pnpm create expo-app` — documented directly by Expo as a first-class option (ADR-X5)                                                                |
-| Language           | TypeScript                                                                                      | 5.9.x (same as backend)                                                                                                                               |
+| Language           | TypeScript                                                                                      | 6.0.x (same as backend — confirmed 6.0.3 from the actual `pnpm create expo-app` scaffold)                                                                                                                               |
 | Navigation         | React Navigation (Native Stack)                                                                 | 7.x                                                                                                                                                   |
 | State — real-time | Zustand                                                                                         | 5.x                                                                                                                                                   |
 | State — REST      | TanStack Query                                                                                  | **5.102.x**                                                                                                                                     |
