@@ -28,6 +28,7 @@ export function processMarketTick(
       timestamp: tickTimestampSeconds,
       lastUpdatedAt: now,
       price: state.price,
+      change24h: state.change24h,
       spread,
       buyPressure,
       sellPressure,
