@@ -17,8 +17,10 @@ const envSchema = z.object({
 
   // Overridable so integration tests / a future testnet switch can point the Binance
   // adapters elsewhere without touching adapter code — real Binance endpoints by default.
-  BINANCE_REST_BASE_URL: z.string().url().default('https://api.binance.com'),
-  BINANCE_WS_BASE_URL: z.string().url().default('wss://stream.binance.com:9443/stream'),
+  // z.url() not z.string().url() — the latter is deprecated as of Zod 4 (confirmed against
+  // the installed package's own type definitions, node_modules/zod/v4/classic/schemas.d.ts).
+  BINANCE_REST_BASE_URL: z.url().default('https://api.binance.com'),
+  BINANCE_WS_BASE_URL: z.url().default('wss://stream.binance.com:9443/stream'),
 });
 
 export type Env = z.infer<typeof envSchema>;
