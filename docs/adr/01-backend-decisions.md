@@ -407,7 +407,7 @@ pulsecrypto-backend/
 - **CORS:** restricted to explicitly allowed origins.
 - **Rate limiting:** `@fastify/rate-limit` on REST endpoints (100 requests/minute per IP).
 - **WebSocket origin checking:** the `Origin` header is validated on upgrade, with a per-IP connection cap.
-- **Dependency hygiene:** `npm audit` runs in CI.
+- **Dependency hygiene:** `pnpm audit` runs in CI.
 - **Container security:** non-root user, minimal base image (`node:24-alpine`).
 - **Transport (documented):** the README states explicitly that a production deployment would sit behind a TLS-terminating load balancer (`wss://`), even though local development runs plaintext `ws://`.
 - **Outbound call discipline:** every call to Binance's REST API — at startup for pair resolution, and on the cached `/pairs/meta` path — is wrapped with the same timeout handling as any other external dependency; nothing waits unboundedly during boot.

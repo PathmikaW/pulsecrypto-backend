@@ -149,8 +149,8 @@ jobs:
   ci:
     steps:
       - Checkout
-      - Setup Node (current LTS — see §5)
-      - Install dependencies
+      - Setup pnpm (pnpm/action-setup) + Setup Node (current LTS — see §5), cache: pnpm
+      - Install dependencies (pnpm install --frozen-lockfile)
       - Lint (ESLint)
       - Type check (tsc --noEmit)
       - Test (Vitest) — includes BinancePairResolver and PressureCalculator unit tests against fixture data
@@ -166,8 +166,8 @@ jobs:
   ci:
     steps:
       - Checkout
-      - Setup Node (current LTS — see §5)
-      - Install dependencies
+      - Setup pnpm (pnpm/action-setup) + Setup Node (current LTS — see §5), cache: pnpm
+      - Install dependencies (pnpm install --frozen-lockfile)
       - Verify src/contracts/schemas.ts matches the backend's source of truth
         (raw-URL diff check — ADR-X1; no auth, no registry)
       - Lint (ESLint)
@@ -192,17 +192,18 @@ jobs:
 ```dockerfile
 FROM node:24-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 FROM node:24-alpine
 WORKDIR /app
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN corepack enable && addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
 USER nodejs
 EXPOSE 3000
 CMD ["node", "dist/server.js"]
@@ -230,7 +231,7 @@ services:
 
 1. A non-root user and a minimal base image are standard container-security practice.
 2. A multi-stage build keeps the runtime image lean — build tooling never ships in the final image.
-3. This is also the natural on-ramp to the AWS/Kubernetes deployment context the role describes, without building infrastructure beyond what this exercise can meaningfully demonstrate. Unlike the contracts-package decision above, adopting Docker here doesn't introduce any install-time risk for a reviewer — `npm run dev` still works standalone, with or without Docker — so there was no corresponding reason to simplify it away.
+3. This is also the natural on-ramp to the AWS/Kubernetes deployment context the role describes, without building infrastructure beyond what this exercise can meaningfully demonstrate. Unlike the contracts-package decision above, adopting Docker here doesn't introduce any install-time risk for a reviewer — `pnpm dev` still works standalone, with or without Docker — so there was no corresponding reason to simplify it away.
 
 **Trade-offs accepted.** One additional file to maintain, in exchange for a portable, reproducible runtime.
 
@@ -254,28 +255,67 @@ worse failure mode than a slower start, because it surfaces later as a confusing
 failure rather than an immediate, obvious one.
 
 **Decision.** Every framework/project-structure scaffolding step is run **manually, by the
-developer, in their own terminal, using each framework's official setup command** —
+developer, in their own terminal, using each framework's official setup path** —
 never generated or approximated by an AI coding session. This applies specifically to:
 
-- Backend: the initial Fastify project generation (`npm init fastify` or the current
-  equivalent per Fastify's own getting-started docs — confirm the exact invocation against
-  those docs at scaffold time, consistent with this document's existing discipline of not
-  trusting a possibly-stale remembered command; see §5's versioning note for the same
-  reasoning applied to package versions).
-- Mobile: `npx create-expo-app@latest` (or the current equivalent per Expo's own docs) for
-  initial project generation, and `npx expo prebuild` for generating the native
-  `android/`/`ios/` directories (ADR-M1).
+- **Backend:** Fastify has no project generator in its official Getting Started guide —
+  verified directly against `fastify.dev/docs/latest/Guides/Getting-Started/`, which shows
+  `npm i fastify` / `yarn add fastify` and a hand-written `server.js`, not a scaffolding
+  tool. The "official setup" here is: initialize a standard Node/TypeScript project
+  yourself, add `fastify` (plus `fastify-cli`, `fastify-plugin`, and other packages the
+  guide names) as dependencies via the package manager below, and follow the guide's
+  documented server structure. (An earlier version of this ADR described this inaccurately
+  as `npm init fastify`, implying a generator that doesn't exist in the official guide —
+  corrected here after direct verification, not left uncorrected.)
+- **Mobile:** `pnpm create expo-app` (see Package Manager decision below) for initial
+  project generation — verified directly against `docs.expo.dev/get-started/create-a-project/`,
+  which documents pnpm as a first-class option alongside npm/yarn/bun — and
+  `npx expo prebuild` for generating the native `android/`/`ios/` directories (ADR-M1).
 - Any future equivalent: if a new top-level framework or native module is ever introduced
   that has its own official generator/installer, that generator is run manually too — this
   is a standing rule, not a one-time exception for the two cases above.
 
+**Package manager: pnpm, for both repositories.** Not decided by default — evaluated
+explicitly, the same as every other tool choice in this document:
+
+| Option | Pros | Cons |
+| --- | --- | --- |
+| npm | Ships with Node, zero setup, universally documented | Slower installs, weaker dependency-hygiene guarantees (hoisting permits "phantom dependencies" — importing a package that's transitively present but not actually declared) |
+| Yarn Classic (v1) | Historically fast, widely known | No longer actively developed — not a genuine current choice for a new project |
+| Yarn Berry (v2+/PnP) | Fast, workspace-native | PnP mode has a real history of friction with Metro (React Native's bundler); more configuration surface than the alternatives |
+| **pnpm** | Fastest installs, most disk-efficient (content-addressable store), **enforces strict dependency resolution — a phantom-dependency import fails instead of silently working**, first-class Expo support (`pnpm create expo-app`, verified directly against Expo's own docs) | Slightly less universal tooling familiarity than npm, though this gap has closed substantially |
+
+**Decision.** pnpm. The strict-resolution property is the deciding factor, not just
+install speed — it's a correctness property consistent with this document's broader
+emphasis on enforced (not just named) architectural boundaries (see ADR-B7, ADR-M8): a
+dependency that isn't declared in `package.json` simply won't resolve, rather than working
+by accident because some other package hoisted it into `node_modules`. Both official
+getting-started paths verified to support it directly: Expo documents `pnpm create
+expo-app` natively; Fastify has no generator to be incompatible with pnpm in the first
+place, since `fastify`/`fastify-cli` are installed as plain packages
+(`pnpm add fastify` is a direct equivalent of the guide's `npm i fastify`).
+
+**Practical implications, applied consistently everywhere npm was previously assumed:**
+- Lockfile: `pnpm-lock.yaml`, committed in both repos (never gitignored).
+- CI: install steps use `pnpm install --frozen-lockfile`, with `pnpm/action-setup` (or
+  equivalent) added before the Node setup step (ADR-X3).
+- Docker: the backend's multi-stage build (ADR-X4) enables pnpm via Node's built-in
+  Corepack (`corepack enable`) rather than a separate global install, and uses
+  `pnpm install --frozen-lockfile` in place of `npm ci`.
+- Any remaining `npm install`/`npx` reference elsewhere in this document or in either
+  repo's `CLAUDE.md` should be read as `pnpm add`/`pnpm dlx` unless it's specifically
+  quoting an external tool's own documented npm/yarn-only command (e.g. Fastify's guide
+  text, quoted verbatim above for traceability to its source).
+
 **What this does *not* cover.** Routine dependency installation during feature
 implementation — adding `zustand`, `i18next`, a testing library, or any other package a
 spec calls for — is normal implementation work, not "creating the framework or project
-structure," and an AI coding session may run these (`npm install`, or `npx expo install`
-for native-code packages per §5's install rule) as part of building a spec'd feature. The
+structure," and an AI coding session may run these (`pnpm add`, or `npx expo install` for
+native-code packages per §5's install rule — Expo's own install command stays npx-invoked
+regardless of package manager, since it's Expo's CLI doing the version-resolution work, not
+a package fetch) as part of building a spec'd feature. The
 boundary is specifically the *initial scaffold* — the moment a project's foundational
-structure and configuration come into existence — not every subsequent `npm install`
+structure and configuration come into existence — not every subsequent `pnpm add`
 across the project's lifetime. If this boundary should be drawn differently (for example,
 requiring every dependency install to be run manually too), that's a call for the developer
 to make explicitly — this document states the assumption plainly so it can be corrected

@@ -2,7 +2,7 @@
 
 **Setup instructions.** Prerequisites (Node.js, Android Studio, Xcode), backend setup (environment variables, Docker), mobile setup (`npx expo prebuild`), a note that all screens follow the Figma reference linked at the top of this document.
 
-**Build and run instructions.** Backend via `npm run dev` or `docker-compose up`; mobile via `npx expo prebuild && npx expo run:android` (or `expo start` for JS-only iteration against an existing development build).
+**Build and run instructions.** Backend via `pnpm dev` or `docker-compose up`; mobile via `npx expo prebuild && npx expo run:android` (or `expo start` for JS-only iteration against an existing development build).
 
 **Architectural decisions.** A summary of the ADRs in this document, with rationale and trade-offs.
 
@@ -88,8 +88,9 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 - [ ] **The mobile app was built and run on the Android Emulator via `npx expo run:android`, and the screen recording is captured from that build** — this is the assignment's explicit, required target platform (§1 "Technology Requirements"); iOS Simulator is optional and does not substitute for it
 - [ ] Docker build and run succeed for the backend
 - [ ] CI passes on both repositories, including the mandatory contracts-drift check
-- [ ] All package versions were verified against `npm view <package> version` at scaffold time, not assumed from this document's snapshot (§5)
-- [ ] Both project scaffolds (`npm init fastify`/equivalent for the backend, `create-expo-app` + `expo prebuild` for mobile) were generated via each framework's official CLI, run manually by the developer and verified running before any feature implementation began (ADR-X5) — not hand-authored by an AI coding session
+- [ ] All package versions were verified against `pnpm info <package> version` at scaffold time, not assumed from this document's snapshot (§5)
+- [ ] Both project scaffolds (Fastify's official Getting Started guide — `pnpm add fastify`, no generator exists — for the backend; `pnpm create expo-app` + `expo prebuild` for mobile) were followed manually by the developer and verified running before any feature implementation began (ADR-X5) — not hand-authored by an AI coding session
+- [ ] Both repos use pnpm consistently — `pnpm-lock.yaml` committed, no stray `package-lock.json`/`yarn.lock` from an accidental npm/yarn command (ADR-X5)
 - [ ] Incoming WebSocket messages are validated against the mirrored contract schema before reaching `marketStore`, and a malformed message is dropped and logged rather than crashing the app (ADR-M6, v8.1)
 - [ ] The mobile app has a top-level error boundary with a recoverable fallback screen, not a raw crash, on a rendering error (ADR-M6, v8.1)
 
