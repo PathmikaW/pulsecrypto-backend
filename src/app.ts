@@ -1,31 +1,37 @@
-import { join } from 'node:path';
-import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload';
-import { FastifyPluginAsync, FastifyServerOptions } from 'fastify';
+import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import sensible from '@fastify/sensible';
+import type { FastifyPluginAsync, FastifyServerOptions } from 'fastify';
+import type { GetPairsMeta } from './application/GetPairsMeta.js';
+import pairsRoute from './api/routes/pairs.js';
+import healthRoute from './api/routes/health.js';
+import metricsRoute from './api/routes/metrics.js';
+import { env } from './config/env.js';
 
-export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {}
-// Pass --options via CLI arguments in command to enable these options.
-const options: AppOptions = {};
+export interface AppOptions extends FastifyServerOptions {
+  getPairsMeta: GetPairsMeta;
+}
 
-const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void> => {
-  // Place here your custom code!
+/**
+ * Fastify app setup (ADR-B7) — the composition root (server.ts) instantiates this with
+ * the GetPairsMeta use-case already wired, since pair resolution has to complete first.
+ */
+const app: FastifyPluginAsync<AppOptions> = async (fastify, opts) => {
+  await fastify.register(sensible);
 
-  // Do not touch the following lines
-
-  // This loads all plugins defined in plugins
-  // those should be support plugins that are reused
-  // through your application
-  void fastify.register(AutoLoad, {
-    dir: join(__dirname, 'plugins'),
-    options: opts,
+  // ADR-B9 defense in depth
+  await fastify.register(cors, {
+    origin: env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : true,
+  });
+  await fastify.register(rateLimit, {
+    max: env.RATE_LIMIT_MAX,
+    timeWindow: env.RATE_LIMIT_WINDOW_MS,
   });
 
-  // This loads all plugins defined in routes
-  // define your routes in one of these
-  void fastify.register(AutoLoad, {
-    dir: join(__dirname, 'routes'),
-    options: opts,
-  });
+  await fastify.register(healthRoute);
+  await fastify.register(metricsRoute);
+  await fastify.register(pairsRoute, { getPairsMeta: opts.getPairsMeta });
 };
 
 export default app;
-export { app, options };
+export { app };

@@ -5,9 +5,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
 
-  REQUIRED_PAIRS: z
-    .string()
-    .default('BTCUSDT,ETHUSDT,SOLUSDT,DOGEUSDT,XRPUSDT'),
+  REQUIRED_PAIRS: z.string().default('BTCUSDT,ETHUSDT,SOLUSDT,DOGEUSDT,XRPUSDT'),
   EXTRA_PAIRS_COUNT: z.coerce.number().int().nonnegative().default(3),
   PAIR_RESOLUTION_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
   ORDER_BOOK_PRESSURE_DEPTH: z.coerce.number().int().positive().default(10),
@@ -21,6 +19,14 @@ const envSchema = z.object({
   // the installed package's own type definitions, node_modules/zod/v4/classic/schemas.d.ts).
   BINANCE_REST_BASE_URL: z.url().default('https://api.binance.com'),
   BINANCE_WS_BASE_URL: z.url().default('wss://stream.binance.com:9443/stream'),
+
+  // ADR-B9 defense-in-depth. Comma-separated; empty = no restriction, the sensible default
+  // for local dev (a mobile WebSocket client doesn't send a meaningful browser Origin
+  // header the way a browser tab does) — set explicitly to lock this down.
+  ALLOWED_ORIGINS: z.string().default(''),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  MAX_CONNECTIONS_PER_IP: z.coerce.number().int().positive().default(5),
 });
 
 export type Env = z.infer<typeof envSchema>;
