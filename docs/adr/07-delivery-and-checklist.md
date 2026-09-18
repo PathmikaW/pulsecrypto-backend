@@ -89,7 +89,7 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 - [ ] Docker build and run succeed for the backend
 - [ ] CI passes on both repositories, including the mandatory contracts-drift check
 - [ ] All package versions were verified against `pnpm info <package> version` at scaffold time, not assumed from this document's snapshot (§5)
-- [ ] Both project scaffolds (Fastify's official Getting Started guide — `pnpm add fastify`, no generator exists — for the backend; `pnpm create expo-app` + `expo prebuild` for mobile) were followed manually by the developer and verified running before any feature implementation began (ADR-X5) — not hand-authored by an AI coding session
+- [ ] Both project scaffolds (`pnpm create fastify` for the backend, `pnpm create expo-app` + `expo prebuild` for mobile) were run manually by the developer and verified running before any feature implementation began (ADR-X5) — not hand-authored by an AI coding session
 - [ ] Both repos use pnpm consistently — `pnpm-lock.yaml` committed, no stray `package-lock.json`/`yarn.lock` from an accidental npm/yarn command (ADR-X5)
 - [ ] Incoming WebSocket messages are validated against the mirrored contract schema before reaching `marketStore`, and a malformed message is dropped and logged rather than crashing the app (ADR-M6, v8.1)
 - [ ] The mobile app has a top-level error boundary with a recoverable fallback screen, not a raw crash, on a rendering error (ADR-M6, v8.1)

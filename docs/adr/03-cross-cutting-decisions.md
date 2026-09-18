@@ -258,15 +258,20 @@ failure rather than an immediate, obvious one.
 developer, in their own terminal, using each framework's official setup path** —
 never generated or approximated by an AI coding session. This applies specifically to:
 
-- **Backend:** Fastify has no project generator in its official Getting Started guide —
-  verified directly against `fastify.dev/docs/latest/Guides/Getting-Started/`, which shows
-  `npm i fastify` / `yarn add fastify` and a hand-written `server.js`, not a scaffolding
-  tool. The "official setup" here is: initialize a standard Node/TypeScript project
-  yourself, add `fastify` (plus `fastify-cli`, `fastify-plugin`, and other packages the
-  guide names) as dependencies via the package manager below, and follow the guide's
-  documented server structure. (An earlier version of this ADR described this inaccurately
-  as `npm init fastify`, implying a generator that doesn't exist in the official guide —
-  corrected here after direct verification, not left uncorrected.)
+- **Backend:** `pnpm create fastify` — invokes `create-fastify`
+  (`github.com/fastify/create-fastify`), an official generator maintained under the
+  Fastify GitHub org itself, currently v5.0.0. This was checked twice, with two different
+  results, and it's worth recording both rather than only the final answer: the framework's
+  main Getting Started guide (`fastify.dev/docs/latest/Guides/Getting-Started/`) shows only
+  `npm i fastify` / `yarn add fastify` plus a hand-written `server.js`, with no generator —
+  which led an earlier version of this ADR to conclude, wrongly, that Fastify has no
+  official generator at all. It has one; it's just documented on its own repository rather
+  than featured on that particular guide page. `create-fastify`'s own README documents
+  `npm init fastify [app-name]` as the invocation; pnpm's `create` command is confirmed (via
+  pnpm's own docs) to be a general mechanism for any `create-*`-named package with no
+  per-package support required, so `pnpm create fastify` is the correct, verified pnpm
+  equivalent — the same shape as `pnpm create expo-app` below, not `pnpm init` (which only
+  creates a bare `package.json`, no generator involved at all).
 - **Mobile:** `pnpm create expo-app` (see Package Manager decision below) for initial
   project generation — verified directly against `docs.expo.dev/get-started/create-a-project/`,
   which documents pnpm as a first-class option alongside npm/yarn/bun — and
@@ -290,10 +295,11 @@ install speed — it's a correctness property consistent with this document's br
 emphasis on enforced (not just named) architectural boundaries (see ADR-B7, ADR-M8): a
 dependency that isn't declared in `package.json` simply won't resolve, rather than working
 by accident because some other package hoisted it into `node_modules`. Both official
-getting-started paths verified to support it directly: Expo documents `pnpm create
-expo-app` natively; Fastify has no generator to be incompatible with pnpm in the first
-place, since `fastify`/`fastify-cli` are installed as plain packages
-(`pnpm add fastify` is a direct equivalent of the guide's `npm i fastify`).
+scaffolding paths verified to support pnpm: Expo documents `pnpm create expo-app`
+natively in its own docs; `create-fastify`'s pnpm compatibility is inferred from pnpm's own
+general `create` mechanism (any `create-*`-named package, no per-package support
+required) rather than being explicitly stated by the Fastify team — a slightly lower
+confidence level than Expo's case, worth verifying when actually run at scaffold time.
 
 **Practical implications, applied consistently everywhere npm was previously assumed:**
 - Lockfile: `pnpm-lock.yaml`, committed in both repos (never gitignored).
