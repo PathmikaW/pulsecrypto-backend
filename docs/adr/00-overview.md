@@ -3,8 +3,8 @@
 ### Real-Time Cryptocurrency Market Viewer — Technical Design & Rationale
 
 **Document type:** Architecture Decision Record (ADR)
-**Version:** 8.7 — Final
-**Status:** Approved for implementation
+**Version:** 9.0
+**Status:** Approved for implementation — updated post-submission with real-device findings
 
 ---
 
@@ -14,7 +14,7 @@ This document records the architectural decisions behind PulseCrypto ahead of im
 
 The reasoning behind a decision is what makes it possible to evaluate, maintain, and safely change later — the goal is that another engineer can see not just what was built, but why, and what alternatives were weighed and rejected.
 
-Two inputs shaped every decision below: the assignment's explicit functional and non-functional requirements, and the broader engineering expectations described in the Staff Engineer / Architect – Mobile Apps role. Where a minimal implementation and a production-grade one would diverge, this document is explicit about which was chosen and why — the target throughout was a design defensible as something that could genuinely ship, not one scoped only to satisfy a checklist. Equally, where a production-grade pattern would have introduced complexity or risk disproportionate to what it protects against in this specific context, that's stated plainly too — production-grade thinking includes knowing when *not* to add a layer, not only when to add one.
+Two inputs shaped every decision below: the assignment's explicit functional and non-functional requirements, and the broader engineering expectations described in the Staff Engineer / Architect – Mobile Apps role. Where a minimal implementation and a production-grade one would diverge, this document is explicit about which was chosen and why — the target throughout was a design defensible as something that could genuinely ship, not one scoped only to satisfy a checklist. Equally, where a production-grade pattern would have introduced complexity or risk disproportionate to what it protects against in this specific context, that's stated plainly too — production-grade thinking includes knowing when _not_ to add a layer, not only when to add one.
 
 ---
 
@@ -51,7 +51,7 @@ it (backend skips mobile decisions, mobile skips backend decisions), noted per l
 
 1. Executive Summary — this file, below
 2. [Backend Architecture Decisions](01-backend-decisions.md) — ADR-B1–B9. **Backend repo + project root only** — not mirrored into `pulsecrypto-mobile`.
-3. [Mobile Architecture Decisions](02-mobile-decisions.md) — ADR-M1–M10. **Mobile repo + project root only** — not mirrored into `pulsecrypto-backend`.
+3. [Mobile Architecture Decisions](02-mobile-decisions.md) — ADR-M1–M11. **Mobile repo + project root only** — not mirrored into `pulsecrypto-backend`.
 4. [Cross-Cutting Decisions](03-cross-cutting-decisions.md) — ADR-X1–X7. All three locations — read when touching git/CI/contracts/deployment/scaffolding/session process.
 5. [Technology Stack Summary](04-tech-stack.md) — versions, env vars. All three locations.
 6. [Delivery Plan](05-delivery-plan.md) — phase sequence. All three locations.
@@ -80,4 +80,3 @@ The system is designed around five structural principles, each expanded into con
 - **Complexity is added deliberately, in both directions.** Some decisions add structure the assignment doesn't strictly require, because the role's stated standards call for it (see ADR-B7, ADR-M2, ADR-M9). Others were initially over-built and were simplified after review, because the risk or overhead didn't match what was actually being protected against (see ADR-X1, ADR-M6). Both are the same underlying discipline applied honestly, not a bias toward adding layers.
 
 ---
-
