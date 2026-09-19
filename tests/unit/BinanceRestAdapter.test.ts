@@ -34,4 +34,15 @@ describe('BinanceRestAdapter.getPairsMeta', () => {
       marketCap: MARKET_CAP_PLACEHOLDER,
     });
   });
+
+  it('aborts the request and rejects when Binance does not answer within the timeout', async () => {
+    const hangingFetch: FetchJsonFn = (_url, signal) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')));
+      });
+
+    const adapter = new BinanceRestAdapter(hangingFetch, 'https://example.test', 20);
+
+    await expect(adapter.getPairsMeta(['BTCUSDT'])).rejects.toThrow('aborted');
+  });
 });

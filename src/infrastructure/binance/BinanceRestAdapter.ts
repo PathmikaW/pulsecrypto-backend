@@ -14,15 +14,22 @@ interface Ticker24hr {
 export class BinanceRestAdapter implements MetadataProvider {
   constructor(
     private readonly fetchJsonImpl: FetchJsonFn = fetchJson,
-    private readonly restBaseUrl: string = env.BINANCE_REST_BASE_URL
+    private readonly restBaseUrl: string = env.BINANCE_REST_BASE_URL,
+    private readonly timeoutMs: number = env.PAIR_RESOLUTION_TIMEOUT_MS
   ) {}
 
   async getPairsMeta(pairs: string[]): Promise<PairMeta[]> {
     const controller = new AbortController();
-    const tickers = await this.fetchJsonImpl<Ticker24hr[]>(
-      `${this.restBaseUrl}/api/v3/ticker/24hr`,
-      controller.signal
-    );
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    let tickers: Ticker24hr[];
+    try {
+      tickers = await this.fetchJsonImpl<Ticker24hr[]>(
+        `${this.restBaseUrl}/api/v3/ticker/24hr`,
+        controller.signal
+      );
+    } finally {
+      clearTimeout(timer);
+    }
 
     const pairSet = new Set(pairs);
     return tickers
