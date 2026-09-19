@@ -3,7 +3,7 @@
 ### Real-Time Cryptocurrency Market Viewer — Technical Design & Rationale
 
 **Document type:** Architecture Decision Record (ADR)
-**Version:** 9.3
+**Version:** 9.4
 **Status:** Approved for implementation — reconciled against the completed solution (v9.1); where an earlier section describes a design that was not built, a dated note says so
 
 ---

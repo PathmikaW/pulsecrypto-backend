@@ -78,7 +78,7 @@ main (production-only, protected, tagged releases — receives merges only from 
   `release/*` or `hotfix/*` branch, so its history reads as a sequence of releases, not
   day-to-day development noise.
 
-**Status (v9.1).** All work so far has flowed `feature/*` / `fix/*` → `develop` through pull requests, and `develop` is the GitHub default branch of both repositories, so a reviewer who clones either repo sees the real code. The release half of Gitflow has **not** happened: no `release/*` branch exists, no tag exists, and `main` still holds only the empty initial commit. Cutting `release/v1.0.0` from `develop`, merging it into `main` with a `v1.0.0` tag, and merging back into `develop` is the remaining step. The three-stage Husky pipeline is now identical in both repositories — before v9.1 the mobile `pre-push` hook ran only `tsc --noEmit` (a stale TODO said to add the tests once they existed).
+**Status (v9.4).** All work so far has flowed `feature/*` / `fix/*` → `develop` through pull requests, and `develop` is the GitHub default branch of both repositories, so a reviewer who clones either repo sees the real code. `release/v1.0.0` has been cut from `develop` in both repositories and kept identical to it (the one release fix, the backend Dockerfile, went `fix/*` → `develop` and the release branch was fast-forwarded). The last steps of Gitflow have **not** happened yet: `release/v1.0.0` has not been merged into `main` (still the empty initial commit), no `v1.0.0` tag exists, and there has been no back-merge because nothing needs one until `main` is touched. The three-stage Husky pipeline is identical in both repositories — before v9.1 the mobile `pre-push` hook ran only `tsc --noEmit` (a stale TODO said to add the tests once they existed).
 
 **Conventional Commits, examples:**
 
@@ -199,7 +199,7 @@ jobs:
 FROM node:24-alpine AS builder
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build:ts
@@ -233,7 +233,7 @@ services:
 
 _(No top-level `version:` key — deprecated in the current Compose spec; modern Compose ignores/warns on it. Base image uses `node:24-alpine` — see §5 for why Node 24 specifically.)_
 
-**Status (v9.1).** The Dockerfile and compose file match the listings above (with `build:ts`, the script name that actually exists in `package.json`). They have **not been build-verified**: Docker is not installed on the development machine, so `docker-compose up --build` has never been run. The non-Docker equivalents (`pnpm run build:ts` then `node dist/server.js`) were run and confirmed serving REST and WebSocket traffic. One known imprecision: the runtime stage copies the builder's whole `node_modules`, devDependencies included, so "build tooling never ships" is true of the TypeScript sources but not of dev packages; `pnpm prune --prod` in the builder before the copy is the standard fix, left unapplied because it could not be verified here.
+**Status (v9.4).** The image is now build- and run-verified: `docker build` and `docker run` succeeded on a Linux VM (Amazon Linux 2023, x86-64, 1 GB RAM plus a 1 GB swap file for the build), and the container served `/health`, `/pairs/meta` and the WebSocket with all eight pairs resolved. The first attempt **failed**: `pnpm install --frozen-lockfile` stopped with `ERR_PNPM_IGNORED_BUILDS` for esbuild, because `pnpm-workspace.yaml` (which holds the `allowBuilds` approval) was not copied into the builder stage before the install. The Dockerfile now copies it alongside `package.json` and the lockfile, as in the listing above. `docker-compose up` itself has not been run — the compose file is unexercised — and no Docker is installed on the development laptop. One known imprecision remains: the runtime stage copies the builder's whole `node_modules`, devDependencies included, so "build tooling never ships" is true of the TypeScript sources but not of dev packages; `pnpm prune --prod` in the builder before the copy is the standard fix, left unapplied. _(Through v9.3 this note said the image had never been built.)_
 
 **Rationale.**
 

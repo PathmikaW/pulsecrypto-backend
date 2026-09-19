@@ -23,15 +23,19 @@ The companion mobile client lives in a separate repository, [`pulsecrypto-mobile
 pnpm install
 ```
 
-**Environment**
+**Configuration**
 
-Copy `.env.example` to `.env` and adjust if needed — every default is already tuned to the
-assignment's stated requirements (see [Environment variables](#environment-variables) below).
-No Binance API key is required; this service only uses Binance's public market-data streams.
+Nothing is required to run it: **no API key, account or secret is needed**, and every environment
+variable has a default, so the backend starts without a `.env` file. It only uses Binance's public
+market-data endpoints. To change a setting, copy the example and edit it:
 
 ```bash
 cp .env.example .env
 ```
+
+`.env.example` lists every supported variable with its default and purpose (pairs, broadcast
+interval, backpressure limits, rate limit, allowed origins, per-IP connection cap); the same table is
+in [`docs/adr/04-tech-stack.md`](./docs/adr/04-tech-stack.md). `.env` is gitignored — never commit it.
 
 ---
 
@@ -58,11 +62,11 @@ Multi-stage build (`node:24-alpine`; TypeScript sources and the compile step sta
 `EXTRA_PAIRS_COUNT`, `PAIR_RESOLUTION_TIMEOUT_MS`, and `ORDER_BOOK_PRESSURE_DEPTH` are set
 in `docker-compose.yml` — override there or via `.env` as needed.
 
-> **Not build-verified in this environment** — Docker isn't installed on the machine this was
-> written on, so `docker-compose up --build` hasn't actually been run end-to-end here. The
-> Dockerfile/compose setup follows the project's own ADR-X4 spec exactly and mirrors the same
-> `pnpm run build:ts` / `node dist/server.js` path already verified working via `pnpm start`
-> above, but please confirm the container build itself succeeds before relying on it.
+> **Verification status** — `docker build` and `docker run` of this image were verified on a Linux VM
+> (Amazon Linux 2023): the container served `/health`, `/pairs/meta` and the WebSocket with all eight
+> pairs resolved. The first build attempt failed because `pnpm-workspace.yaml` was not copied into
+> the builder stage (`ERR_PNPM_IGNORED_BUILDS` for esbuild); that is fixed in the `Dockerfile`.
+> `docker-compose up --build` itself has not been run.
 
 Once running, the server listens on `http://localhost:3000` (REST) and the same port upgrades
 to a WebSocket connection (`ws://localhost:3000`) for the market-data broadcast.
@@ -74,6 +78,23 @@ curl http://localhost:3000/health
 curl http://localhost:3000/pairs/meta
 curl http://localhost:3000/metrics
 ```
+
+---
+
+## Hosting it on a cloud VM (optional)
+
+You can run the backend on your machine — nothing here is required to review the project. For a
+demo or a screen recording without your laptop, [`docs/deployment-aws-ec2.md`](./docs/deployment-aws-ec2.md)
+describes running the Docker image on a small AWS EC2 instance (boot script in
+[`deploy/aws-ec2-user-data.sh`](./deploy/aws-ec2-user-data.sh)), including a least-privilege IAM policy.
+Things worth knowing before you do:
+
+- **Outbound data is the cost driver.** Each connected client receives about **126 KB/s** (roughly
+  0.46 GB an hour), so keep the port closed to everyone but you and stop the instance when idle.
+- **A hosted copy is private.** The instance used for this submission only accepts connections from
+  the owner's IP address, and it stops itself after six hours. If you want to try the mobile app
+  against it, ask the repository owner (see the mobile README, _Configuration and access_).
+- **Plain `http`/`ws`** — fine for the emulator and development builds; a release build needs TLS.
 
 ---
 
@@ -259,8 +280,9 @@ Stated plainly rather than left for a reviewer to find:
   retry (`pulsecrypto_supported_pairs_count` shows whether this happened).
 - **No CI.** The Husky hooks (lint-staged, commitlint, and `tsc --noEmit` + tests on push) are
   the only automated gate; `--no-verify` bypasses them.
-- **The Docker setup has never been built** in the environment this was developed in (no Docker
-  installed) — see the note under [Build and run](#build-and-run).
+- **`docker-compose up` has not been run.** The image itself was built and run successfully on a Linux
+  VM (see [Build and run](#build-and-run)); the compose file is unexercised, and the runtime image
+  still copies the builder's dev dependencies.
 - **CORS and the WebSocket `Origin` check are permissive by default** (`ALLOWED_ORIGINS` empty);
   set it for any real deployment. Transport is plaintext `ws://`/`http://` locally by design.
 - **`marketCap` is a placeholder**, not live data.
