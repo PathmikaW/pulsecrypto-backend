@@ -17,6 +17,7 @@ even though the caller stores the result back into the map).
 
 **Emission:** a `setInterval` (or equivalent) timer fires every `BROADCAST_INTERVAL_MS`
 (default 100ms, configurable via env). On each tick:
+
 1. Iterate the map.
 2. For each pair, compute the broadcast payload: run `PressureCalculator` on the current
    order book, assemble the `MarketUpdate` shape (see `data-models.md`), and set
@@ -54,6 +55,7 @@ metrics.wsMessagesBroadcast.inc();
 the default 100ms interval).
 
 **Do not implement:**
+
 - A per-client message queue (bounded or unbounded).
 - A separate time-based "lag" timeout independent of `bufferedAmount`.
 

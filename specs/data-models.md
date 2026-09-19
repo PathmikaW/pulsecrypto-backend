@@ -82,8 +82,8 @@ interface PairMeta {
 ```typescript
 interface SupportedPairsMeta {
   pairs: PairMeta[];
-  resolvedAt: string; // ISO 8601 — when the backend's pair list was last resolved
-  // (startup time, or the last successful background retry — ADR-B3)
+  resolvedAt: string; // ISO 8601 — when the backend's pair list was resolved (startup time;
+  // there is no background retry, so it is fixed for the process lifetime — ADR-B3)
 }
 ```
 
