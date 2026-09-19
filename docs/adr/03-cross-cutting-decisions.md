@@ -6,12 +6,12 @@
 
 **Options considered:**
 
-| Option                                                                                                                                                                             | Pros                                                                                                                                                                       | Cons                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Monorepo                                                                                                                                                                           | Shared types, single CI pipeline                                                                                                                                           | Setup complexity disproportionate to this project's scope, and doesn't match the assignment's own framing of two separate deliverables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Two repos, contract duplicated, no automated check                                                                                                                                 | Simplest possible setup                                                                                                                                                    | Pure manual discipline — a real drift risk, not just a theoretical one                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Two repos + a published shared package (`@pulsecrypto/contracts`, via GitHub Packages)                                                                                           | Contract-first; drift caught by CI rather than by hoping someone remembers                                                                                                 | **Rejected on review.** GitHub's own documentation states plainly that an access token is required to install a package via GitHub Packages — public or private, no exception. A reviewer cloning the mobile repository and running `npm install` would fail unless they had their own personal access token configured, which risks breaking the single most basic requirement of a submission: that it installs and runs. This is a worse failure mode than the drift risk it was meant to solve, and a third repository/package to publish and version is disproportionate overhead for one developer building both consuming sides. |
-| **Two repos; `contracts/` owned by the backend, mirrored into the mobile repo, drift caught by a CI step that diffs the mobile copy against the backend's raw GitHub URL** | Gets the meaningful protection — drift becomes a build failure, not a hope — with zero registry, zero publish step, and zero authentication anywhere in the install path | The mobile copy is a mirror, not a live import — a deliberate, disclosed trade, not an oversight                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Option                                                                                                                                                                     | Pros                                                                                                                                                                     | Cons                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo                                                                                                                                                                   | Shared types, single CI pipeline                                                                                                                                         | Setup complexity disproportionate to this project's scope, and doesn't match the assignment's own framing of two separate deliverables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Two repos, contract duplicated, no automated check                                                                                                                         | Simplest possible setup                                                                                                                                                  | Pure manual discipline — a real drift risk, not just a theoretical one                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Two repos + a published shared package (`@pulsecrypto/contracts`, via GitHub Packages)                                                                                     | Contract-first; drift caught by CI rather than by hoping someone remembers                                                                                               | **Rejected on review.** GitHub's own documentation states plainly that an access token is required to install a package via GitHub Packages — public or private, no exception. A reviewer cloning the mobile repository and running `npm install` would fail unless they had their own personal access token configured, which risks breaking the single most basic requirement of a submission: that it installs and runs. This is a worse failure mode than the drift risk it was meant to solve, and a third repository/package to publish and version is disproportionate overhead for one developer building both consuming sides. |
+| **Two repos; `contracts/` owned by the backend, mirrored into the mobile repo, drift caught by a CI step that diffs the mobile copy against the backend's raw GitHub URL** | Gets the meaningful protection — drift becomes a build failure, not a hope — with zero registry, zero publish step, and zero authentication anywhere in the install path | The mobile copy is a mirror, not a live import — a deliberate, disclosed trade, not an oversight                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 **Decision.** Two repositories only — `pulsecrypto-backend` and `pulsecrypto-mobile`. No third repository, no package registry.
 
@@ -27,6 +27,8 @@
     curl -sf https://raw.githubusercontent.com/<you>/pulsecrypto-backend/main/contracts/schemas.ts -o /tmp/upstream-schemas.ts
     diff /tmp/upstream-schemas.ts src/contracts/schemas.ts
 ```
+
+**Status (v9.1): the CI step above is designed but not implemented — neither repository has a CI workflow.** What exists instead: the mobile mirror is byte-identical to the backend file (`cmp` exit 0), and `pnpm run check:contracts` in the mobile repo runs the same raw-URL diff on demand. It targets the backend's `develop` branch, because `main` is still the empty initial commit (see ADR-X2's status note) and its raw URL returns 404. Until CI exists, run it before every mobile push and after any change to `contracts/schemas.ts`. (Through v9.0 the two files differed in header comments, so the diff described here would have failed; they were made identical in v9.1.)
 
 **Rationale.**
 
@@ -65,7 +67,7 @@ main (production-only, protected, tagged releases — receives merges only from 
                                       merges into both main, tagged, and develop)
 ```
 
-- `feature/*` branches off `develop`, PR'd and squash-merged back into `develop`.
+- `feature/*` branches off `develop`, PR'd and merged back into `develop` (the actual history shows GitHub merge commits, `Merge pull request #N`, not squashes).
 - `release/*` branches off `develop` once a coherent set of features is ready to stabilize;
   only bug fixes are permitted on a release branch, never new feature work; on completion
   it merges into both `main` (tagged, e.g. `v1.0.0`) and back into `develop`, so any
@@ -75,6 +77,8 @@ main (production-only, protected, tagged releases — receives merges only from 
 - `main` never receives a feature merge directly — every change reaches it only via a
   `release/*` or `hotfix/*` branch, so its history reads as a sequence of releases, not
   day-to-day development noise.
+
+**Status (v9.1).** All work so far has flowed `feature/*` / `fix/*` → `develop` through pull requests, and `develop` is the GitHub default branch of both repositories, so a reviewer who clones either repo sees the real code. The release half of Gitflow has **not** happened: no `release/*` branch exists, no tag exists, and `main` still holds only the empty initial commit. Cutting `release/v1.0.0` from `develop`, merging it into `main` with a `v1.0.0` tag, and merging back into `develop` is the remaining step. The three-stage Husky pipeline is now identical in both repositories — before v9.1 the mobile `pre-push` hook ran only `tsc --noEmit` (a stale TODO said to add the tests once they existed).
 
 **Conventional Commits, examples:**
 
@@ -92,10 +96,10 @@ perf(mobile): optimize Zustand selectors for pair-level updates
 
 **Pre-commit hook pipeline — the specific mechanics, in both repositories identically:**
 
-| Hook                  | Runs                               | Purpose                                                                                                                                                                                                                                                                         |
-| --------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.husky/pre-commit` | `lint-staged`                    | ESLint`--fix` and Prettier `--write`, scoped only to staged files — fast enough to run on every commit without friction                                                                                                                                                    |
-| `.husky/commit-msg` | `commitlint`                     | Validates the commit message against Conventional Commits format; a malformed message is rejected before it enters history                                                                                                                                                      |
+| Hook                | Runs                             | Purpose                                                                                                                                                                                                                                                                        |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.husky/pre-commit` | `lint-staged`                    | ESLint`--fix` and Prettier `--write`, scoped only to staged files — fast enough to run on every commit without friction                                                                                                                                                        |
+| `.husky/commit-msg` | `commitlint`                     | Validates the commit message against Conventional Commits format; a malformed message is rejected before it enters history                                                                                                                                                     |
 | `.husky/pre-push`   | `tsc --noEmit` + full test suite | Lint-staged only touches staged files — a change in one file can break a type or a test in a file that wasn't staged. Pre-push is the safety net that catches that class of problem before it reaches a shared branch, at the point where the cost of catching it is still low |
 
 `lint-staged` configuration:
@@ -140,6 +144,8 @@ perf(mobile): optimize Zustand selectors for pair-level updates
 ### ADR-X3: CI/CD Strategy — GitHub Actions
 
 **Context.** Automated quality gates are needed for both repositories, as the remote-enforced counterpart to the local pre-commit pipeline in ADR-X2 — the hooks catch problems before a push; CI catches anything that slipped through (for example, a contributor who used `--no-verify`, or an environment difference between a local machine and CI).
+
+**Status (v9.1): not implemented — no `.github/workflows/` exists in either repository.** The local Husky pipeline (ADR-X2) is the only automated gate today, and it can be bypassed with `--no-verify`. The pipelines below are the intended design. Their local equivalents, all currently green: backend `pnpm lint && pnpm exec tsc --noEmit && pnpm test && pnpm run build:ts`; mobile `pnpm lint && pnpm run typecheck && pnpm test && pnpm run check:contracts` plus `pnpm expo export --platform android` as the bundling check. `pnpm audit --prod` reports no vulnerabilities for the backend and one moderate transitive advisory for mobile (`uuid`, reached only through Expo's build-time config plugins, so not part of the runtime bundle). `expo-doctor`, the Android native build check and the Docker build have not been run in CI form.
 
 **Backend CI:**
 
@@ -196,7 +202,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm run build
+RUN pnpm run build:ts
 
 FROM node:24-alpine
 WORKDIR /app
@@ -215,7 +221,7 @@ services:
   backend:
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=production
       - BROADCAST_INTERVAL_MS=100
@@ -225,12 +231,14 @@ services:
     restart: unless-stopped
 ```
 
-*(No top-level `version:` key — deprecated in the current Compose spec; modern Compose ignores/warns on it. Base image uses `node:24-alpine` — see §5 for why Node 24 specifically.)*
+_(No top-level `version:` key — deprecated in the current Compose spec; modern Compose ignores/warns on it. Base image uses `node:24-alpine` — see §5 for why Node 24 specifically.)_
+
+**Status (v9.1).** The Dockerfile and compose file match the listings above (with `build:ts`, the script name that actually exists in `package.json`). They have **not been build-verified**: Docker is not installed on the development machine, so `docker-compose up --build` has never been run. The non-Docker equivalents (`pnpm run build:ts` then `node dist/server.js`) were run and confirmed serving REST and WebSocket traffic. One known imprecision: the runtime stage copies the builder's whole `node_modules`, devDependencies included, so "build tooling never ships" is true of the TypeScript sources but not of dev packages; `pnpm prune --prod` in the builder before the copy is the standard fix, left unapplied because it could not be verified here.
 
 **Rationale.**
 
 1. A non-root user and a minimal base image are standard container-security practice.
-2. A multi-stage build keeps the runtime image lean — build tooling never ships in the final image.
+2. A multi-stage build keeps sources and the compile step out of the runtime image (see the v9.1 status note above on devDependencies).
 3. This is also the natural on-ramp to the AWS/Kubernetes deployment context the role describes, without building infrastructure beyond what this exercise can meaningfully demonstrate. Unlike the contracts-package decision above, adopting Docker here doesn't introduce any install-time risk for a reviewer — `pnpm dev` still works standalone, with or without Docker — so there was no corresponding reason to simplify it away.
 
 **Trade-offs accepted.** One additional file to maintain, in exchange for a portable, reproducible runtime.
@@ -245,7 +253,7 @@ raises a specific question the assignment itself flags as something it's evaluat
 session do directly, and which parts should the developer do themselves and hand off a
 verified result? Framework scaffolding (generating the initial Fastify project, generating
 the initial Expo project, running `expo prebuild` to produce the native `android/`/`ios/`
-directories) is exactly this kind of boundary case — an AI session *could* hand-write a
+directories) is exactly this kind of boundary case — an AI session _could_ hand-write a
 `package.json`, a `tsconfig.json`, and an `app.json` that approximate what the official
 generator produces, but "approximate" is the operative risk: official scaffolding tools
 encode a large number of framework-specific, version-specific, and platform-specific
@@ -264,7 +272,7 @@ never generated or approximated by an AI coding session. This applies specifical
   (1) the framework's main Getting Started guide shows no generator at all, which wrongly
   suggested none existed; (2) `create-fastify` (`github.com/fastify/create-fastify`) turned
   out to be a real, Fastify-org-maintained generator, invoked via `pnpm create fastify
-  --lang=ts` — verified to produce genuine TypeScript output; (3) directly comparing that
+--lang=ts` — verified to produce genuine TypeScript output; (3) directly comparing that
   output against `pnpm dlx fastify-cli generate . --lang=ts` found `create-fastify`
   resolves noticeably older pinned dependencies (`fastify-cli` 7.4.1, TypeScript 5.9.2)
   than calling `fastify-cli` directly (`fastify-cli` 8.0.2, TypeScript 6.0.2) — `fastify-cli`
@@ -285,12 +293,12 @@ never generated or approximated by an AI coding session. This applies specifical
 **Package manager: pnpm, for both repositories.** Not decided by default — evaluated
 explicitly, the same as every other tool choice in this document:
 
-| Option | Pros | Cons |
-| --- | --- | --- |
-| npm | Ships with Node, zero setup, universally documented | Slower installs, weaker dependency-hygiene guarantees (hoisting permits "phantom dependencies" — importing a package that's transitively present but not actually declared) |
-| Yarn Classic (v1) | Historically fast, widely known | No longer actively developed — not a genuine current choice for a new project |
-| Yarn Berry (v2+/PnP) | Fast, workspace-native | PnP mode has a real history of friction with Metro (React Native's bundler); more configuration surface than the alternatives |
-| **pnpm** | Fastest installs, most disk-efficient (content-addressable store), **enforces strict dependency resolution — a phantom-dependency import fails instead of silently working**, first-class Expo support (`pnpm create expo-app`, verified directly against Expo's own docs) | Slightly less universal tooling familiarity than npm, though this gap has closed substantially |
+| Option               | Pros                                                                                                                                                                                                                                                                       | Cons                                                                                                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| npm                  | Ships with Node, zero setup, universally documented                                                                                                                                                                                                                        | Slower installs, weaker dependency-hygiene guarantees (hoisting permits "phantom dependencies" — importing a package that's transitively present but not actually declared) |
+| Yarn Classic (v1)    | Historically fast, widely known                                                                                                                                                                                                                                            | No longer actively developed — not a genuine current choice for a new project                                                                                               |
+| Yarn Berry (v2+/PnP) | Fast, workspace-native                                                                                                                                                                                                                                                     | PnP mode has a real history of friction with Metro (React Native's bundler); more configuration surface than the alternatives                                               |
+| **pnpm**             | Fastest installs, most disk-efficient (content-addressable store), **enforces strict dependency resolution — a phantom-dependency import fails instead of silently working**, first-class Expo support (`pnpm create expo-app`, verified directly against Expo's own docs) | Slightly less universal tooling familiarity than npm, though this gap has closed substantially                                                                              |
 
 **Decision.** pnpm. The strict-resolution property is the deciding factor, not just
 install speed — it's a correctness property consistent with this document's broader
@@ -304,6 +312,7 @@ package-manager-specific behavior to verify at all, since `dlx` just runs the pa
 CLI once).
 
 **Practical implications, applied consistently everywhere npm was previously assumed:**
+
 - Lockfile: `pnpm-lock.yaml`, committed in both repos (never gitignored).
 - CI: install steps use `pnpm install --frozen-lockfile`, with `pnpm/action-setup` (or
   equivalent) added before the Node setup step (ADR-X3).
@@ -315,14 +324,14 @@ CLI once).
   quoting an external tool's own documented npm/yarn-only command (e.g. Fastify's guide
   text, quoted verbatim above for traceability to its source).
 
-**What this does *not* cover.** Routine dependency installation during feature
+**What this does _not_ cover.** Routine dependency installation during feature
 implementation — adding `zustand`, `i18next`, a testing library, or any other package a
 spec calls for — is normal implementation work, not "creating the framework or project
 structure," and an AI coding session may run these (`pnpm add`, or `npx expo install` for
 native-code packages per §5's install rule — Expo's own install command stays npx-invoked
 regardless of package manager, since it's Expo's CLI doing the version-resolution work, not
 a package fetch) as part of building a spec'd feature. The
-boundary is specifically the *initial scaffold* — the moment a project's foundational
+boundary is specifically the _initial scaffold_ — the moment a project's foundational
 structure and configuration come into existence — not every subsequent `pnpm add`
 across the project's lifetime. If this boundary should be drawn differently (for example,
 requiring every dependency install to be run manually too), that's a call for the developer
@@ -351,7 +360,7 @@ should stop and say so, rather than generate scaffold files itself to "get start
    error. Requiring a human-run, human-verified scaffold removes this specific failure mode
    entirely rather than mitigating it.
 3. **Directly answers the assignment's own evaluation criterion** — "how effectively you
-   leverage AI" is demonstrated as much by knowing where *not* to delegate to AI as by using
+   leverage AI" is demonstrated as much by knowing where _not_ to delegate to AI as by using
    it well everywhere else; this is the same judgment already exercised elsewhere in this
    document (see the Executive Summary's "complexity is added deliberately, in both
    directions" principle) applied to the human/AI boundary specifically, rather than only to
@@ -377,7 +386,7 @@ once already during this project's setup, before this ADR existed:
    producing work that quietly diverges from what this document and `specs/` actually say,
    without anyone deciding to diverge.
 2. **Declaring a task done without verifying the aggregate result.** A multi-step task can
-   have every individual step's output look correct while the *final combined state* is
+   have every individual step's output look correct while the _final combined state_ is
    wrong — concretely, an initial Gitflow branch bootstrap (ADR-X2) produced a rootless
    commit with no real `main`/`develop` ancestry, because each `git checkout -b` step
    reported success individually, and the session that ran it had already identified the
@@ -385,7 +394,7 @@ once already during this project's setup, before this ADR existed:
    so — only caught when the user reviewed the pushed result directly.
 
 **Decision.** Two binding disciplines, stated here and in both repositories' `CLAUDE.md` —
-so they load automatically at the start of *every* session, regardless of which Claude Code
+so they load automatically at the start of _every_ session, regardless of which Claude Code
 instance, conversation, or point in this project's timeline is running:
 
 1. **Session-start grounding, every time — new session, resumed session, or immediately
@@ -440,12 +449,12 @@ surfaced from that, both about AI-session token economy rather than the content 
 `CLAUDE.md` in each repo (loaded unconditionally on every session) pointed to this single
 file as "the full rationale," and a session with no more specific guidance than that would
 often read the whole thing to answer one question — for example, a backend-only session
-paying to load ~590 lines of mobile-only decisions (ADR-M1–M10) it will never act on, every
+paying to load ~590 lines of mobile-only decisions (ADR-M1–M12) it will never act on, every
 time it needed to check one unrelated backend decision.
 
 **Decision.** Split this document into topic files under `adr/` at the project root —
 `00-overview.md` (this index — Purpose, Reference Materials, Executive Summary),
-`01-backend-decisions.md` (ADR-B1–B9), `02-mobile-decisions.md` (ADR-M1–M10),
+`01-backend-decisions.md` (ADR-B1–B9), `02-mobile-decisions.md` (ADR-M1–M12),
 `03-cross-cutting-decisions.md` (this file — ADR-X1–X7), `04-tech-stack.md`,
 `05-delivery-plan.md`, `06-workflow-and-testing.md`, `07-delivery-and-checklist.md`,
 `08-implementation-notes.md`, `09-document-history.md`. Each repo mirrors only the files
@@ -484,4 +493,3 @@ complete picture now clicks through an index rather than scrolling one document,
 future edit needs to land in the correct topic file rather than "somewhere in the ADR." Both
 are minor costs against the token savings for the much more common case (a session working
 one specific decision or one specific repo).
-

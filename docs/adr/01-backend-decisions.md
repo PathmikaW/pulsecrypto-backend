@@ -6,12 +6,12 @@
 
 **Options considered:**
 
-| Option            | Pros                                                                                              | Cons                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Express           | Large ecosystem, widely familiar                                                                  | Slower, no built-in schema validation, middleware overhead                    |
+| Option      | Pros                                                                                             | Cons                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Express     | Large ecosystem, widely familiar                                                                 | Slower, no built-in schema validation, middleware overhead                    |
 | **Fastify** | 2–3x faster than Express, built-in JSON Schema validation, plugin architecture, TypeScript-first | Smaller ecosystem (not a constraint here)                                     |
-| Hono              | Ultra-lightweight, edge-ready                                                                     | Less mature WebSocket integration for this use case                           |
-| NestJS            | Full DI framework, strong module conventions                                                      | Heavier abstraction and slower startup than this single-service gateway needs |
+| Hono        | Ultra-lightweight, edge-ready                                                                    | Less mature WebSocket integration for this use case                           |
+| NestJS      | Full DI framework, strong module conventions                                                     | Heavier abstraction and slower startup than this single-service gateway needs |
 
 **Decision.** Fastify (current stable major — see §5 for the verified version).
 
@@ -41,10 +41,10 @@
 
 | Option                   | Pros                                                                                                         | Cons                                                                                                  |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| **ws**             | Lightweight, one of the fastest Node.js WebSocket implementations, standard-protocol, no forced abstractions | No built-in reconnection or rooms (neither needed server-side)                                        |
+| **ws**                   | Lightweight, one of the fastest Node.js WebSocket implementations, standard-protocol, no forced abstractions | No built-in reconnection or rooms (neither needed server-side)                                        |
 | Socket.IO                | Reconnection, rooms, polling fallback out of the box                                                         | Non-standard wire protocol, added overhead, obscures the exact backpressure control this system needs |
 | uWebSockets.js           | Fastest available (native binding)                                                                           | Native compilation complexity, harder to debug for this scope                                         |
-| Fastify WebSocket plugin | Convenient integration with Fastify                                                                          | Thin wrapper with limited additional value over using`ws` directly                                  |
+| Fastify WebSocket plugin | Convenient integration with Fastify                                                                          | Thin wrapper with limited additional value over using`ws` directly                                    |
 
 **Decision.** `ws`, run alongside Fastify — Fastify serves REST, `ws` serves the WebSocket connection.
 
@@ -70,17 +70,17 @@
 
 **Options considered — connection topology:**
 
-| Option                           | Pros                                                              | Cons                                                             |
-| -------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| One connection per pair          | Isolated failure per pair                                         | N× connection overhead, higher rate-limit exposure              |
+| Option                     | Pros                                                              | Cons                                                             |
+| -------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
+| One connection per pair    | Isolated failure per pair                                         | N× connection overhead, higher rate-limit exposure               |
 | **Single combined stream** | One connection, Binance-recommended, simpler lifecycle management | Single point of failure (mitigated by reconnection with backoff) |
-| REST polling                     | Simple                                                            | High latency, rate-limited, not genuinely real-time              |
+| REST polling               | Simple                                                            | High latency, rate-limited, not genuinely real-time              |
 
 **Options considered — how additional pairs are chosen:**
 
-| Option                                                                        | Pros                                                                                                     | Cons                                                                                                      |
-| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Hand-picked list, decided at design time                                      | Simple, no runtime logic                                                                                 | Goes stale the moment liquidity shifts or a pair is delisted — a guess presented as a fact               |
+| Option                                                                  | Pros                                                                                                     | Cons                                                                                                      |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Hand-picked list, decided at design time                                | Simple, no runtime logic                                                                                 | Goes stale the moment liquidity shifts or a pair is delisted — a guess presented as a fact                |
 | **Resolved dynamically against live Binance liquidity data at startup** | Always reflects what is actually tradable and liquid right now; self-documenting; no ongoing maintenance | Slightly more startup logic; needs an explicit fallback if Binance's REST metadata is briefly unreachable |
 
 **Decision.** A single combined WebSocket connection, carrying the five required pairs unconditionally plus a configurable number of additional pairs (`EXTRA_PAIRS_COUNT`, default 3) selected at startup by live 24-hour quote volume — never chosen in advance.
@@ -91,59 +91,70 @@
 2. Exclude leveraged/synthetic tokens (symbols ending `UP`, `DOWN`, `BULL`, `BEAR` before the `USDT` suffix) and stablecoin-to-stablecoin pairs (base assets `USDC`, `FDUSD`, `DAI`, `TUSD`, `USD1`, `PYUSD`, `USDG`) — both are technically tradable but a poor fit for a real-time price viewer: the former are index products behaving differently than spot assets, and the latter barely move in price, defeating the purpose of a live market display.
 3. Query `GET /api/v3/ticker/24hr`, filter to the tradable set from steps 1–2, sort by `quoteVolume` descending.
 4. Take the top `EXTRA_PAIRS_COUNT` symbols not already in the required list, and append them to it.
-5. **Fallback:** if either Binance call fails or exceeds `PAIR_RESOLUTION_TIMEOUT_MS` (default 5000ms), log a warning, proceed with the required five pairs only, and let the mandatory scope of the system start correctly regardless. A background retry attempts to expand the pair set once Binance's metadata endpoints recover, without requiring a restart.
+5. **Fallback:** if either Binance call fails or exceeds `PAIR_RESOLUTION_TIMEOUT_MS` (default 5000ms), log a warning, proceed with the required five pairs only, and let the mandatory scope of the system start correctly regardless. Resolution runs exactly once per process lifetime (`specs/pair-resolution-strategy.md`) — there is **no background retry**, so a process that fell back keeps the required five until it is restarted, and `pulsecrypto_supported_pairs_count` (ADR-B8) is what makes that state visible in production. _(Through v9.0 this step described a background retry that was never implemented; corrected in v9.1.)_
 
-**Implementation** (in `infrastructure/binance/`, invoked once from the composition root before the ingestion adapter connects — see ADR-B7):
+**Implementation.** Split across the hexagonal layers (ADR-B7): the exclusion rules are a pure, exchange-agnostic domain policy; the Binance REST calls live in the adapter that implements the `PairResolver` port; and the use-case is invoked once from the composition root before the ingestion adapter connects.
 
 ```typescript
-// infrastructure/binance/BinancePairResolver.ts
+// domain/services/PairEligibility.ts — the exclusion rules
 const LEVERAGED_SUFFIX_PATTERN = /(UP|DOWN|BULL|BEAR)USDT$/;
 const EXCLUDED_QUOTE_ADJACENT_BASES = new Set(['USDC', 'FDUSD', 'DAI', 'TUSD', 'USD1', 'PYUSD', 'USDG']);
 
-export async function resolveSupportedPairs(
-  requiredSymbols: string[],
-  extraCount: number,
-  timeoutMs: number
-): Promise<string[]> {
-  try {
-    const [info, tickers] = await withTimeout(
-      Promise.all([
-        fetchJson('https://api.binance.com/api/v3/exchangeInfo'),
-        fetchJson('https://api.binance.com/api/v3/ticker/24hr'),
-      ]),
-      timeoutMs
-    );
+export function isEligibleTradingPair(symbol: string, baseAsset: string): boolean {
+  return !LEVERAGED_SUFFIX_PATTERN.test(symbol) && !EXCLUDED_QUOTE_ADJACENT_BASES.has(baseAsset);
+}
 
-    const tradable = new Set(
-      info.symbols
-        .filter((s: any) =>
-          s.status === 'TRADING' &&
-          s.quoteAsset === 'USDT' &&
-          s.isSpotTradingAllowed &&
-          !LEVERAGED_SUFFIX_PATTERN.test(s.symbol) &&
-          !EXCLUDED_QUOTE_ADJACENT_BASES.has(s.baseAsset)
-        )
-        .map((s: any) => s.symbol)
-    );
+// infrastructure/binance/BinancePairResolver.ts — implements the PairResolver port
+export class BinancePairResolver implements PairResolver {
+  async resolveSupportedPairs(
+    requiredSymbols: string[],
+    extraCount: number,
+    timeoutMs: number
+  ): Promise<string[]> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs); // cancels both requests, not just abandons them
 
-    const rankedByVolume = tickers
-      .filter((t: any) => tradable.has(t.symbol))
-      .sort((a: any, b: any) => Number(b.quoteVolume) - Number(a.quoteVolume))
-      .map((t: any) => t.symbol);
+    try {
+      const [info, tickers] = await Promise.all([
+        this.fetchJsonImpl<ExchangeInfoResponse>(
+          `${this.restBaseUrl}/api/v3/exchangeInfo`,
+          controller.signal
+        ),
+        this.fetchJsonImpl<Ticker24hr[]>(`${this.restBaseUrl}/api/v3/ticker/24hr`, controller.signal),
+      ]);
 
-    const extra = rankedByVolume
-      .filter((s: string) => !requiredSymbols.includes(s))
-      .slice(0, extraCount);
+      const tradable = new Set(
+        info.symbols
+          .filter(
+            (s) =>
+              s.status === 'TRADING' &&
+              s.quoteAsset === 'USDT' &&
+              s.isSpotTradingAllowed &&
+              isEligibleTradingPair(s.symbol, s.baseAsset)
+          )
+          .map((s) => s.symbol)
+      );
 
-    return [...requiredSymbols, ...extra];
-  } catch (err) {
-    logger.warn({ err }, 'Pair resolution failed — proceeding with required pairs only');
-    return requiredSymbols;
+      const rankedByVolume = tickers
+        .filter((t) => tradable.has(t.symbol))
+        .sort((a, b) => Number(b.quoteVolume) - Number(a.quoteVolume))
+        .map((t) => t.symbol);
+
+      const extra = rankedByVolume.filter((s) => !requiredSymbols.includes(s)).slice(0, extraCount);
+      return [...requiredSymbols, ...extra];
+    } catch (err) {
+      logger.warn({ err }, 'Pair resolution failed — proceeding with required pairs only');
+      return requiredSymbols;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 ```
 
-The resolved list feeds directly into the combined stream URL:
+`application/ResolveSupportedPairs.ts` is the thin use-case around the port that `server.ts` calls at startup.
+
+The resolved list feeds directly into the combined stream URL (base URL configurable via `BINANCE_WS_BASE_URL`, default below):
 
 ```
 wss://stream.binance.com:9443/stream?streams=
@@ -173,12 +184,12 @@ wss://stream.binance.com:9443/stream?streams=
 
 **Options considered — buffering model:**
 
-| Option                          | Description                                                                              | Verdict                                                                                                |
-| ------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Latest-state snapshot** | Maintain one in-memory state object per pair; on each timer tick, snapshot and broadcast | **Selected** — simple, naturally deduplicating, constant memory, predictable latency            |
-| Delta queue                     | Queue every incoming delta, flush on tick                                                | Preserves every update, but risks memory spikes during bursts and requires complex deduplication logic |
-| Token bucket                    | Rate-limit emissions per pair                                                            | More precision than this scale (five to eight pairs) needs                                             |
-| Sliding window                  | Aggregate over a time window                                                             | Adds latency and complexity without a corresponding benefit here                                       |
+| Option                    | Description                                                                              | Verdict                                                                                                |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Latest-state snapshot** | Maintain one in-memory state object per pair; on each timer tick, snapshot and broadcast | **Selected** — simple, naturally deduplicating, constant memory, predictable latency                   |
+| Delta queue               | Queue every incoming delta, flush on tick                                                | Preserves every update, but risks memory spikes during bursts and requires complex deduplication logic |
+| Token bucket              | Rate-limit emissions per pair                                                            | More precision than this scale (five to eight pairs) needs                                             |
+| Sliding window            | Aggregate over a time window                                                             | Adds latency and complexity without a corresponding benefit here                                       |
 
 **How it works.**
 
@@ -189,19 +200,19 @@ wss://stream.binance.com:9443/stream?streams=
 
 **Options considered — backpressure mechanism:**
 
-| Option                                                                                               | Description                                                                                                              | Verdict                                                                                                                                                                                                                                                                                                              |
-| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Option                                                                                               | Description                                                                                                              | Verdict                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Bounded per-client message queue (fixed size, drop-oldest) plus a separate time-based lag disconnect | Two independent thresholds guarding against the same underlying failure mode                                             | **Rejected as the primary mechanism** — redundant given that the latest-state model above already guarantees at most one pending message per pair per client at any moment. Layering a second, independent safeguard on top adds a second threshold to reason about and test, without a proportional benefit. |
-| **`ws.bufferedAmount` check before each tick's write, with consecutive-skip eviction**       | Uses the OS-level TCP send buffer as the single source of truth for whether a client's connection is actually keeping up | **Selected** — one clear signal, one clear consequence, straightforward to test in isolation                                                                                                                                                                                                                  |
+| **`ws.bufferedAmount` check before each tick's write, with consecutive-skip eviction**               | Uses the OS-level TCP send buffer as the single source of truth for whether a client's connection is actually keeping up | **Selected** — one clear signal, one clear consequence, straightforward to test in isolation                                                                                                                                                                                                                  |
 
 **Selected mechanism, in full:**
 
 - Before writing to a given client on each tick, check `ws.bufferedAmount`.
 - If it exceeds `MAX_BUFFERED_BYTES` (default 64KB), skip that client for this tick — the message is not queued, since the next tick's snapshot supersedes it regardless.
-- Track consecutive skips per client. If a client is skipped for `MAX_CONSECUTIVE_SKIPS` ticks in a row (default 10, roughly one second at the default interval), disconnect it with WebSocket close code `1013` ("Try again later") and increment the corresponding eviction metric.
+- Track consecutive skips per client. If a client is skipped for `MAX_CONSECUTIVE_SKIPS` ticks in a row (default 10, roughly one second at the default interval), disconnect it with WebSocket close code `1013` ("Try again later"). Both a skip and an eviction increment `pulsecrypto_ws_messages_dropped_total` (ADR-B8).
 - No per-client message history is retained anywhere. Memory is `O(pairs)`, never `O(clients × pairs × time)` — a structural property of the design, not a value that needs tuning to stay bounded.
 
-> **Implementation precision — `lastUpdatedAt` synchronization.** Each conflated snapshot is stamped with `lastUpdatedAt` set to the wall-clock time of the *conflation tick that produced it* — not the raw timestamp carried in the originating Binance message. This reflects when the system itself processed and served the data, giving the mobile client one consistent, system-controlled timestamp to render, independent of minor variance in upstream delivery timing. On the mobile side, `marketStore.updatePair` must set this field directly from the incoming payload with no client-side recomputation, so `LastUpdatedLabel` always renders a value with a single source of truth (see ADR-M2, ADR-M8, ADR-M9, and §12).
+> **Implementation precision — `lastUpdatedAt` synchronization.** Each conflated snapshot is stamped with `lastUpdatedAt` set to the wall-clock time of the _conflation tick that produced it_ — not the raw timestamp carried in the originating Binance message. This reflects when the system itself processed and served the data, giving the mobile client one consistent, system-controlled timestamp to render, independent of minor variance in upstream delivery timing. On the mobile side, `marketStore.updatePair` must set this field directly from the incoming payload with no client-side recomputation, so `LastUpdatedLabel` always renders a value with a single source of truth (see ADR-M2, ADR-M8, ADR-M9, and §12).
 
 > **Note — this same broadcast cadence also doubles as the mobile client's connection-liveness signal**, removing the need for a separate WebSocket heartbeat protocol. See ADR-M6.
 
@@ -254,11 +265,11 @@ Sell Pressure is defined as the complement of Buy Pressure by construction — d
 
 **Options considered:**
 
-| Option                                                      | Pros                                                            | Cons                                                             |
-| ----------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Mock data only                                              | Simple, no external dependency                                  | Not representative of how a production metadata endpoint behaves |
+| Option                                                | Pros                                                            | Cons                                                             |
+| ----------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Mock data only                                        | Simple, no external dependency                                  | Not representative of how a production metadata endpoint behaves |
 | **Real Binance data with a documented mock fallback** | Production-realistic, accurate, resilient to a temporary outage | External dependency, requires fallback handling                  |
-| Real Binance data with no fallback                          | Accurate                                                        | No resilience if Binance is briefly unreachable                  |
+| Real Binance data with no fallback                    | Accurate                                                        | No resilience if Binance is briefly unreachable                  |
 
 **Decision.** Real data from `GET https://api.binance.com/api/v3/ticker/24hr`, filtered to the currently resolved pair list (held in memory from the single startup resolution, not re-queried per request), mapped to the internal contract schema, cached for 60 seconds to bound outbound call volume.
 
@@ -282,62 +293,64 @@ Sell Pressure is defined as the complement of Buy Pressure by construction — d
 
 ```
 pulsecrypto-backend/
-├── contracts/                          # Source-of-truth wire-format schemas — see ADR-X1. This repo owns
-│   └── schemas.ts                      # them; the mobile repo mirrors this file and CI diff-checks it.
+├── contracts/
+│   └── schemas.ts                      # Source-of-truth wire-format schemas (ADR-X1); mirrored byte-for-byte
+│                                       # into the mobile repo's src/contracts/
 ├── src/
 │   ├── config/
-│   │   ├── env.ts                     # Zod-validated env vars, incl. EXTRA_PAIRS_COUNT, PAIR_RESOLUTION_TIMEOUT_MS,
-│   │   │                               # ORDER_BOOK_PRESSURE_DEPTH
-│   │   └── pairs.ts                   # REQUIRED_PAIRS constant only — the full pair list is resolved at
+│   │   ├── env.ts                      # Zod-validated env vars (full list in §5)
+│   │   └── pairs.ts                    # REQUIRED_PAIRS constant only — the full pair list is resolved at
 │   │                                   # runtime by BinancePairResolver, not hardcoded here
-│   ├── domain/                        # Pure business logic — zero external or framework dependencies
+│   ├── domain/                         # Pure business logic — imports nothing outside domain/
 │   │   ├── models/
-│   │   │   ├── PairState.ts
+│   │   │   ├── BinanceStreamUpdate.ts  # normalized depth/ticker message (discriminated union)
+│   │   │   ├── MarketUpdate.ts         # the WebSocket broadcast payload
 │   │   │   ├── OrderBook.ts
-│   │   │   └── MarketUpdate.ts
-│   │   ├── services/                  # Pure domain logic only — no I/O, no framework calls
-│   │   │   ├── PressureCalculator.ts  # Spread / buy / sell pressure — see ADR-B5
-│   │   │   └── ConflationEngine.ts    # Applies an incoming update to the latest-state map — see ADR-B4
-│   │   └── ports/                     # Interfaces — the hexagon's boundary, checkable, not just a convention
-│   │       ├── MarketDataSource.ts    # Inbound: what an exchange adapter must implement
-│   │       ├── Broadcaster.ts         # Outbound: what a transport adapter must implement
-│   │       ├── MetadataProvider.ts    # Outbound: what a metadata source must implement
-│   │       └── PairResolver.ts        # Outbound: what resolves the supported pair list at startup
-│   ├── application/                   # Orchestration / use-cases — depends on domain + ports only
-│   │   ├── ResolveSupportedPairs.ts   # Wires PairResolver at startup, applies the required-pairs guarantee
-│   │   ├── ProcessMarketTick.ts       # Wires ConflationEngine + Broadcaster on each timer tick
-│   │   └── GetPairsMeta.ts            # Wires MetadataProvider + caching, scoped to resolved pairs
-│   ├── infrastructure/                # Adapters — implement the ports, depend on domain, never the reverse
+│   │   │   ├── PairMeta.ts             # /pairs/meta shapes, MARKET_CAP_PLACEHOLDER, toDisplayName
+│   │   │   └── PairState.ts
+│   │   ├── services/                   # Pure domain logic only — no I/O, no framework calls
+│   │   │   ├── ConflationEngine.ts     # applyUpdate: incoming message -> new pair state — see ADR-B4
+│   │   │   ├── PairEligibility.ts      # exclusion rules (leveraged / stablecoin pairs) — see ADR-B3
+│   │   │   └── PressureCalculator.ts   # spread / buy / sell pressure — see ADR-B5
+│   │   └── ports/                      # Interfaces — the hexagon's boundary
+│   │       ├── Broadcaster.ts          # Outbound: what a transport adapter must implement
+│   │       ├── Logger.ts               # Outbound: lets application/ log without importing pino
+│   │       ├── MarketDataSource.ts     # Inbound: what an exchange adapter must implement
+│   │       ├── MetadataProvider.ts     # Outbound: what a metadata source must implement
+│   │       └── PairResolver.ts         # Outbound: what resolves the supported pair list at startup
+│   ├── application/                    # Use-cases — depend on domain + ports only
+│   │   ├── GetPairsMeta.ts             # MetadataProvider + 60s cache + scoped mock fallback
+│   │   ├── ProcessMarketTick.ts        # state map -> pressure/spread -> Broadcaster, once per tick
+│   │   └── ResolveSupportedPairs.ts    # PairResolver at startup
+│   ├── infrastructure/                 # Adapters — implement the ports, depend on domain, never the reverse
 │   │   ├── binance/
-│   │   │   ├── BinanceWsAdapter.ts     # implements MarketDataSource — connects using the resolved pair list
+│   │   │   ├── BinanceMessageParser.ts
+│   │   │   ├── BinancePairResolver.ts  # implements PairResolver
 │   │   │   ├── BinanceRestAdapter.ts   # implements MetadataProvider
-│   │   │   ├── BinancePairResolver.ts  # implements PairResolver — full logic in ADR-B3
-│   │   │   └── BinanceMessageParser.ts
+│   │   │   └── BinanceWsAdapter.ts     # implements MarketDataSource (reconnect with backoff)
 │   │   ├── websocket/
-│   │   │   ├── WsBroadcaster.ts       # implements Broadcaster — backpressure logic from ADR-B4
-│   │   │   └── ClientRegistry.ts      # tracks connections + per-client consecutive-skip counters
+│   │   │   ├── ClientRegistry.ts       # connections + per-client consecutive-skip counters
+│   │   │   ├── WsBroadcaster.ts        # implements Broadcaster — backpressure from ADR-B4
+│   │   │   └── WsServer.ts             # inbound lifecycle: origin allowlist, per-IP cap
 │   │   └── observability/
-│   │       ├── Logger.ts              # structured logging (pino)
-│   │       └── Metrics.ts             # Prometheus metrics
-│   ├── api/                           # Inbound HTTP port
-│   │   ├── routes/
-│   │   │   ├── pairs.ts               # GET /pairs/meta → GetPairsMeta use-case
-│   │   │   ├── health.ts              # GET /health
-│   │   │   └── metrics.ts             # GET /metrics
-│   │   └── schemas/                   # Imports from ../../../contracts — this repo's own source of truth
-│   │                                   # (ADR-X1), not a package dependency
-│   ├── app.ts                         # Fastify app setup
-│   └── server.ts                      # Composition root — see startup sequence below
+│   │       ├── Logger.ts               # pino instance
+│   │       └── Metrics.ts              # Prometheus metrics (@prometheus-io/client)
+│   ├── api/
+│   │   └── routes/                     # pairs.ts, health.ts, metrics.ts — depend on application/ only;
+│   │                                   # infra-backed collaborators (e.g. the metrics exporter) are injected
+│   ├── app.ts                          # Fastify plugin: sensible, CORS, rate limit, routes
+│   └── server.ts                       # Composition root — see startup sequence below
 ├── tests/
-│   ├── unit/                          # domain/ and application/ tested with ports mocked
-│   └── integration/                   # infrastructure/ tested against a mock Binance server
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-├── tsconfig.json
-├── package.json
-└── README.md
+│   ├── unit/                           # domain, application and adapters, with ports/fetch mocked
+│   └── integration/                    # real Fastify app + real `ws` client; payloads checked against contracts/
+├── specs/                              # Spec-driven-development inputs (ADR §7)
+├── docs/adr/                           # Mirror of the project-level ADR (backend-relevant files only)
+├── Dockerfile, docker-compose.yml, .dockerignore, .env.example
+├── eslint.config.mjs, vitest.config.mts, commitlint.config.cjs, .husky/
+└── tsconfig.json, package.json, README.md
 ```
+
+_(v9.1 correction: earlier drafts of this tree listed `api/schemas/` and an integration suite "against a mock Binance server". Neither exists: route payloads are validated against `contracts/schemas.ts` inside the integration tests instead of at runtime, and the Binance adapters are unit-tested with an injected fetch/WebSocket rather than a mock Binance server. Several models/ports/adapters above also did not appear in the original tree.)_
 
 **Startup sequence.**
 
@@ -350,8 +363,9 @@ pulsecrypto-backend/
 
 - `domain/` imports nothing outside `domain/`.
 - `application/` imports only `domain/`.
-- `infrastructure/` imports `domain/` (to implement its ports); it is imported *by* `server.ts`, never the reverse.
-- `api/` depends on `application/` only, never directly on `infrastructure/`.
+- `infrastructure/` imports `domain/` (to implement its ports); it is imported _by_ `server.ts`, never the reverse.
+- `api/` depends on `application/` only, never directly on `infrastructure/` — anything an `api/` route needs from infrastructure (the metrics exporter) is passed in by `server.ts` as a plugin option.
+- `application/` reaches logging through the `Logger` port (`domain/ports/Logger.ts`), which `server.ts` satisfies with the pino instance — it never imports `infrastructure/observability`.
 - `server.ts` is the only file permitted to import concrete `infrastructure/` classes and wire them into `application/` — the composition root.
 
 **Rationale.**
@@ -363,7 +377,7 @@ pulsecrypto-backend/
 5. **Extensibility:** adding a second exchange means writing a new adapter implementing `MarketDataSource`, not modifying the domain.
 6. **This is more structure than a three-route service strictly needs on its own — stated honestly.** The layering here is a deliberate answer to the role's explicit emphasis on SOLID, GRASP, and Clean/Hexagonal Architecture, not something a service this size would necessarily converge on by default. Complexity adopted because the evaluation criteria specifically call for it is a different thing than complexity added without a reason — see ADR-X1 and ADR-M6 for the reverse case, where similar-looking structure was removed after review.
 
-**Trade-offs accepted.** More files and folders than a simple MVC layout, and it requires discipline to keep the layers separate — mitigated by the dependency rule above being explicit enough to lint-check via import restrictions if desired (for example, an ESLint rule forbidding imports from `infrastructure/` inside `domain/`).
+**Trade-offs accepted.** More files and folders than a simple MVC layout, and it requires discipline to keep the layers separate — mitigated by the dependency rule above being explicit enough to check mechanically. As of v9.1 it is verified by a grep-based spot check (no import from `infrastructure/` in `domain/`, `application/` or `api/`), not by an ESLint import-restriction rule — adding such a rule remains an open improvement.
 
 ---
 
@@ -371,20 +385,20 @@ pulsecrypto-backend/
 
 **Context.** The backend's health and performance need to be observable in operation, not just inferable from logs after the fact.
 
-**Decision.** `pino` for structured logging, `prom-client` for Prometheus metrics.
+**Decision.** `pino` for structured logging, `@prometheus-io/client` for Prometheus metrics. `@prometheus-io/client` is the successor to `prom-client`: the npm registry marks `prom-client` deprecated with the message "prom-client has been replaced by @prometheus-io/client" (checked v9.1); the API used here (`Counter`, `Gauge`, `Histogram`, `Registry`) is the same. Earlier drafts of this ADR named `prom-client`.
 
 **Logging.** Structured JSON via `pino`, standard levels (fatal/error/warn/info/debug). The pair-resolution outcome is logged explicitly at startup — `info` with the resolved list on success, `warn` with the reason on fallback (ADR-B3).
 
 **Metrics**, exposed at `GET /metrics`:
 
-| Metric                                          | Type      | Purpose                                                                                                                |
-| ----------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `pulsecrypto_ws_connections_active`           | Gauge     | Current connected client count                                                                                         |
-| `pulsecrypto_ws_messages_broadcast_total`     | Counter   | Successful broadcast messages sent                                                                                     |
-| `pulsecrypto_ws_messages_dropped_total`       | Counter   | Incremented on both skip and eviction (ADR-B4)                                                                         |
-| `pulsecrypto_ws_broadcast_latency_seconds`    | Histogram | Time from tick start to broadcast completion                                                                           |
-| `pulsecrypto_binance_messages_received_total` | Counter   | Inbound messages from the Binance stream                                                                               |
-| `pulsecrypto_supported_pairs_count`           | Gauge     | Set once at startup by`ResolveSupportedPairs` — confirms in production whether the fallback path (ADR-B3) was taken |
+| Metric                                        | Type      | Purpose                                                                                                                                            |
+| --------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pulsecrypto_ws_connections_active`           | Gauge     | Current connected client count                                                                                                                     |
+| `pulsecrypto_ws_messages_broadcast_total`     | Counter   | Successful broadcast messages sent                                                                                                                 |
+| `pulsecrypto_ws_messages_dropped_total`       | Counter   | Incremented on both skip and eviction (ADR-B4)                                                                                                     |
+| `pulsecrypto_ws_broadcast_latency_seconds`    | Histogram | Time from tick start to broadcast completion — observed around `processMarketTick` in `server.ts` (v9.1; it was defined but never recorded before) |
+| `pulsecrypto_binance_messages_received_total` | Counter   | Inbound messages from the Binance stream                                                                                                           |
+| `pulsecrypto_supported_pairs_count`           | Gauge     | Set once at startup by`ResolveSupportedPairs` — confirms in production whether the fallback path (ADR-B3) was taken                                |
 
 **Rationale.**
 
@@ -403,14 +417,14 @@ pulsecrypto-backend/
 **Decision.** A layered approach:
 
 - **Secrets:** all configuration in `.env`, validated with Zod at boot, never committed (`.gitignore` covers `.env`, `*.pem`, `*.key`).
-- **Input validation:** every REST input validated against a Zod schema.
-- **CORS:** restricted to explicitly allowed origins.
+- **Input validation:** environment variables are Zod-validated at boot (fail-fast). The REST surface has no request inputs today (three parameterless `GET` routes) and the WebSocket is broadcast-only (client messages are ignored), so there is no further input to validate. Response payloads are checked against `contracts/schemas.ts` in the integration tests, not at runtime.
+- **CORS:** allowlist configurable via `ALLOWED_ORIGINS`; the default (empty) is permissive for local development, so a real deployment must set it.
 - **Rate limiting:** `@fastify/rate-limit` on REST endpoints (100 requests/minute per IP).
-- **WebSocket origin checking:** the `Origin` header is validated on upgrade, with a per-IP connection cap.
-- **Dependency hygiene:** `pnpm audit` runs in CI.
+- **WebSocket origin checking:** when `ALLOWED_ORIGINS` is set, the `Origin` header is validated on upgrade (empty = no restriction, since native mobile clients send no meaningful browser `Origin`); a per-IP connection cap applies regardless (`MAX_CONNECTIONS_PER_IP`, default 5).
+- **Dependency hygiene:** `pnpm audit --prod` is a manual pre-submission check — there is no CI (ADR-X3). At v9.1 the backend reports no known vulnerabilities.
 - **Container security:** non-root user, minimal base image (`node:24-alpine`).
 - **Transport (documented):** the README states explicitly that a production deployment would sit behind a TLS-terminating load balancer (`wss://`), even though local development runs plaintext `ws://`.
-- **Outbound call discipline:** every call to Binance's REST API — at startup for pair resolution, and on the cached `/pairs/meta` path — is wrapped with the same timeout handling as any other external dependency; nothing waits unboundedly during boot.
+- **Outbound call discipline:** every call to Binance's REST API — at startup for pair resolution, and on the cached `/pairs/meta` path — is aborted after `PAIR_RESOLUTION_TIMEOUT_MS` (default 5000ms) via an `AbortController`; nothing waits unboundedly. _(v9.1: the `/pairs/meta` path created an `AbortController` that was never armed, so it had no timeout despite this bullet; fixed and covered by a unit test.)_
 
 **Rationale.**
 
@@ -420,4 +434,3 @@ pulsecrypto-backend/
 **Trade-offs accepted.** Marginally more setup complexity; rate limiting is tuned generously enough not to interfere with the mobile app's own expected traffic pattern.
 
 ---
-

@@ -12,7 +12,7 @@ Per ADR-B4, the backend stamps each conflated snapshot with the conflation tick'
 Per ADR-M8, `WatchlistScreen` renders every favourited pair regardless of `getTrackedPairs()` membership, obtaining the favourites list exclusively through `features/favourites`'s exported `useFavourites()` hook. A favourited pair outside the current tracked set shows `core/components/UntrackedFavouriteBadge` with a localized label, rather than being silently hidden from the list or causing a rendering error.
 
 **4. The contracts drift check should stay deliberately simple, and needs no authentication anywhere in its path.**
-Per ADR-X1, mobile's CI job fetches `contracts/schemas.ts` from the backend repository's raw GitHub URL and diffs it against the local mirrored copy at `src/contracts/schemas.ts`, failing the build on any difference. No package registry, no personal access token, no publish step — this is what makes the check something a reviewer's own `pnpm install` will never trip over.
+Per ADR-X1, the check fetches `contracts/schemas.ts` from the backend repository's raw GitHub URL and diffs it against the local mirrored copy at `src/contracts/schemas.ts`, failing on any difference. Today it runs as `pnpm run check:contracts` (there is no CI yet — ADR-X3); the two files must be byte-identical, header comments included. No package registry, no personal access token, no publish step — this is what makes the check something a reviewer's own `pnpm install` will never trip over.
 
 **5. There is no server-side or client-side heartbeat/ping-pong message anywhere in this system, by design.**
 Per ADR-M6, connection liveness on the mobile side is inferred from the backend's own broadcast cadence: if no message has arrived within `STALE_CONNECTION_TIMEOUT_MS` (a documented multiple of `BROADCAST_INTERVAL_MS`), the connection is treated as dead. If an implementation session (AI-assisted or otherwise) adds a separate ping/pong exchange, that's scope creep relative to this spec, not a missing feature — the broadcast stream already carries the liveness signal.
@@ -21,4 +21,3 @@ Per ADR-M6, connection liveness on the mobile side is inferred from the backend'
 Per §5, SDK 56 has a known Hermes memory regression affecting `react-native-reanimated` specifically — the exact library this app depends on for its core animation requirement (ADR-M4). SDK 58 was in beta, not stable, as of this document's date; if it has stabilized by the time implementation begins, re-verify this regression's status and the SDK 58 migration notes before assuming it's a safe default rather than assuming SDK 57 is still current.
 
 ---
-
