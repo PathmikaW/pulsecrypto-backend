@@ -13,7 +13,7 @@ The companion mobile client lives in a separate repository, [`pulsecrypto-mobile
 
 **Prerequisites**
 
-- Node.js 24.x (Active LTS) — enable pnpm via Corepack: `corepack enable`
+- Node.js 24.x (Active LTS) — enable pnpm via Corepack: `corepack enable`. (Development and testing for this submission ran on Node 25.8.1; 24.x is the documented target and the Docker base image.)
 - pnpm (see above)
 - Docker, optional, for the containerized run path
 
@@ -41,9 +41,10 @@ cp .env.example .env
 pnpm run dev          # tsx watch — hot-reloads on change
 pnpm start             # pnpm run build:ts && node dist/server.js — compiled, production-style run
 pnpm run build:ts      # compile only (tsc, outputs to dist/)
-pnpm test              # Vitest — unit + integration
+pnpm test              # Vitest — 13 files, 51 tests: unit + integration (real Fastify app and `ws` client)
 pnpm run typecheck      # tsc --noEmit
 pnpm run lint           # ESLint
+pnpm audit --prod       # dependency check (currently reports no known vulnerabilities)
 ```
 
 **Docker**
@@ -52,7 +53,7 @@ pnpm run lint           # ESLint
 docker-compose up --build
 ```
 
-Multi-stage build (`node:24-alpine`, build tooling excluded from the final image), non-root
+Multi-stage build (`node:24-alpine`; TypeScript sources and the compile step stay in the builder stage — the runtime stage still copies the builder's full `node_modules`, dev dependencies included, so `pnpm prune --prod` is a known improvement), non-root
 `nodejs` user, port 3000 exposed. Defaults for `BROADCAST_INTERVAL_MS`,
 `EXTRA_PAIRS_COUNT`, `PAIR_RESOLUTION_TIMEOUT_MS`, and `ORDER_BOOK_PRESSURE_DEPTH` are set
 in `docker-compose.yml` — override there or via `.env` as needed.
@@ -64,7 +65,7 @@ in `docker-compose.yml` — override there or via `.env` as needed.
 > above, but please confirm the container build itself succeeds before relying on it.
 
 Once running, the server listens on `http://localhost:3000` (REST) and the same port upgrades
-to a WebSocket connection for the market-data broadcast.
+to a WebSocket connection (`ws://localhost:3000`) for the market-data broadcast.
 
 **Verify it's alive**
 
@@ -103,6 +104,83 @@ curl http://localhost:3000/metrics
 
 ---
 
+## API and payload format
+
+**WebSocket** — connect to `ws://localhost:3000`. There is nothing to send: the server is
+broadcast-only and ignores any client messages. Every `BROADCAST_INTERVAL_MS` (default 100ms)
+each connected client receives **one JSON message per tracked pair** (so roughly 8 messages
+per tick with the default 5 required + 3 resolved pairs). A real message, with the order book
+trimmed to two levels per side (the live message carries 20 per side):
+
+```json
+{
+  "pair": "BTCUSDT",
+  "timestamp": 1789844301,
+  "lastUpdatedAt": 1789844301758,
+  "price": 81436.57,
+  "change24h": 0.686,
+  "spread": 0.010000000009313226,
+  "buyPressure": 43.45800312193362,
+  "sellPressure": 56.54199687806638,
+  "bids": [
+    { "price": 81436.56, "quantity": 1.94317 },
+    { "price": 81436.55, "quantity": 0.00062 }
+  ],
+  "asks": [
+    { "price": 81436.57, "quantity": 2.56935 },
+    { "price": 81436.58, "quantity": 0.00995 }
+  ]
+}
+```
+
+| Field                         | Meaning                                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pair`                        | Binance symbol the update belongs to (`BTCUSDT`, …)                                                                                                                            |
+| `timestamp`                   | Unix **seconds** of the broadcast tick                                                                                                                                         |
+| `lastUpdatedAt`               | Milliseconds since epoch of the tick that produced this snapshot — set once by the backend at broadcast time, never the raw Binance message time; clients render it unmodified |
+| `price`                       | Last traded price (`@ticker`)                                                                                                                                                  |
+| `change24h`                   | 24h price change **percent**, signed (`-2.5` = down 2.5%)                                                                                                                      |
+| `spread`                      | `lowest_ask − highest_bid`, in USDT                                                                                                                                            |
+| `buyPressure`, `sellPressure` | Percent of top-N (`ORDER_BOOK_PRESSURE_DEPTH`, default 10) bid vs ask volume; always sum to 100                                                                                |
+| `bids`, `asks`                | Top 20 order-book levels per side, `{ price, quantity }`                                                                                                                       |
+
+The schema is `contracts/schemas.ts` (Zod), the single source of truth; the mobile repo mirrors
+it byte-for-byte, and the integration tests validate real broadcasts against it. An empty
+order book (right after a reconnect) yields `spread: 0` and a neutral 50/50 pressure — treat it
+as "not yet available".
+
+**REST**
+
+- `GET /pairs/meta` — metadata for every tracked pair (real Binance `ticker/24hr` data,
+  cached 60s, falling back to mock data for the required five if Binance is unreachable):
+
+  ```json
+  {
+    "pairs": [
+      {
+        "symbol": "BTCUSDT",
+        "displayName": "BTC/USDT",
+        "tradingStatus": "TRADING",
+        "high24h": 81951,
+        "low24h": 80844.58,
+        "volume24h": 935200618.44,
+        "marketCap": 1200000000000
+      }
+    ],
+    "resolvedAt": "2026-09-19T18:49:06.698Z"
+  }
+  ```
+
+  `volume24h` is USDT quote volume. **`marketCap` is a static placeholder** (Binance's ticker has
+  no market-cap field), returned unchanged for every pair. `resolvedAt` is when the pair list was
+  resolved at startup.
+
+- `GET /health` — `{"status":"ok"}`; liveness only, does not depend on Binance.
+- `GET /metrics` — Prometheus exposition format (connections, broadcast/dropped counts, broadcast
+  latency histogram, Binance messages received, resolved-pair count).
+
+---
+
 ## Architectural decisions
 
 Full rationale for every decision below, including the options considered and rejected, lives
@@ -120,7 +198,7 @@ summary.
 | Buy/Sell Pressure, Spread | **Pure functions**, exact documented formulas                                              | Deterministic, unit-testable against fixture data, independently verifiable by hand                                                                                |
 | `/pairs/meta`             | **Real Binance data**, scoped mock fallback                                                | A metadata endpoint returning fixtures under normal operation misrepresents how the system actually behaves; the fallback is honestly scoped to the mandatory five |
 | Project structure         | **Hexagonal (ports & adapters)**, dependency direction enforced                            | `domain/` has zero external dependencies; adapters implement ports, never the reverse — checkable, not just a naming convention                                    |
-| Observability             | **pino + prom-client**                                                                     | Structured logs explain what happened; metrics are what gets watched in real time — complementary, not substitutes                                                 |
+| Observability             | **pino + `@prometheus-io/client`** (the maintained successor to `prom-client`)             | Structured logs explain what happened; metrics are what gets watched in real time — complementary, not substitutes                                                 |
 | Security                  | **Defense in depth** (rate limiting, origin checks, non-root container, Zod-validated env) | Applied even to the parts of the system this exercise doesn't deploy — a posture that only exists for what's reviewed isn't a real posture                         |
 
 **Buy/Sell Pressure & Spread formulas** (`domain/services/PressureCalculator.ts`):
@@ -172,6 +250,23 @@ depth requested from Binance — the two can be retuned independently.
 
 ---
 
+## Known limitations
+
+Stated plainly rather than left for a reviewer to find:
+
+- **Pair resolution runs once per process.** If Binance is unreachable at startup, the service
+  falls back to the required five and keeps them until it is restarted — there is no background
+  retry (`pulsecrypto_supported_pairs_count` shows whether this happened).
+- **No CI.** The Husky hooks (lint-staged, commitlint, and `tsc --noEmit` + tests on push) are
+  the only automated gate; `--no-verify` bypasses them.
+- **The Docker setup has never been built** in the environment this was developed in (no Docker
+  installed) — see the note under [Build and run](#build-and-run).
+- **CORS and the WebSocket `Origin` check are permissive by default** (`ALLOWED_ORIGINS` empty);
+  set it for any real deployment. Transport is plaintext `ws://`/`http://` locally by design.
+- **`marketCap` is a placeholder**, not live data.
+
+---
+
 ## How AI-assisted development tools were used
 
 This project was built with **Claude Code** end-to-end, using a **spec-driven development**
@@ -194,7 +289,7 @@ Concretely:
   (`pnpm run typecheck && pnpm run lint && pnpm test`, and an actual compile/run check) before
   being considered complete, not just asserted.
 - **Git workflow**: Gitflow branching, Conventional Commits, atomic commits per logical change,
-  reviewed and committed by the developer — Claude Code never pushed or merged autonomously.
+  reviewed by the developer; Claude Code committed, pushed or merged only when explicitly told to for that change.
 - **Human review and correction**: the developer directed scope decisions (e.g. the `marketCap`
   field's placeholder-vs-real-data trade-off), caught and corrected implementation details
   across iterations, and made the final call on every trade-off recorded in this document and
