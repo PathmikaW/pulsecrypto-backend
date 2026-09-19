@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BinancePairResolver, type FetchJsonFn } from '../../src/infrastructure/binance/BinancePairResolver.js';
+import {
+  BinancePairResolver,
+  type FetchJsonFn,
+} from '../../src/infrastructure/binance/BinancePairResolver.js';
 
 const REQUIRED = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'DOGEUSDT', 'XRPUSDT'];
 

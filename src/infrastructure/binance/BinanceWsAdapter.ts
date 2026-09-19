@@ -5,9 +5,7 @@ import { parseStreamMessage } from './BinanceMessageParser.js';
 import { logger } from '../observability/Logger.js';
 import { env } from '../../config/env.js';
 
-// Reconnection backoff timing — single-use implementation detail of this adapter, not
-// deployment-configurable (same treatment ADR-M6 gives the mobile client's fixed backoff
-// schedule), so it stays local rather than moving to config/env.ts.
+// Fixed backoff timing; not deployment-configurable (same as ADR-M6).
 const INITIAL_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30000;
 
@@ -17,7 +15,6 @@ export function buildStreamUrl(pairs: string[], baseUrl: string = env.BINANCE_WS
   return `${baseUrl}?streams=${streams.join('/')}`;
 }
 
-/** Implements MarketDataSource — connects using the resolved pair list (ADR-B7). */
 export class BinanceWsAdapter implements MarketDataSource {
   private ws: WebSocket | null = null;
   private pairs: string[] = [];
@@ -69,7 +66,10 @@ export class BinanceWsAdapter implements MarketDataSource {
   private scheduleReconnect(): void {
     const backoff = Math.min(INITIAL_BACKOFF_MS * 2 ** this.reconnectAttempt, MAX_BACKOFF_MS);
     this.reconnectAttempt += 1;
-    logger.warn({ backoffMs: backoff, attempt: this.reconnectAttempt }, 'Binance connection lost — reconnecting');
+    logger.warn(
+      { backoffMs: backoff, attempt: this.reconnectAttempt },
+      'Binance connection lost — reconnecting'
+    );
     this.reconnectTimer = setTimeout(() => this.open(), backoff);
   }
 }

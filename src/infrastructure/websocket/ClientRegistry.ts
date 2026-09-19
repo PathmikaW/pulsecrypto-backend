@@ -6,11 +6,7 @@ export interface ClientEntry {
   connectedAt: number;
 }
 
-/**
- * Tracks connected WebSocket clients — the ws instance, consecutive-skip counter, and
- * connection timestamp. One instance shared across the process (specs/buffering-strategy.md)
- * — not per-pair, not per-tick.
- */
+/** One instance shared process-wide; not per pair or per tick. */
 export class ClientRegistry {
   private readonly clients = new Set<ClientEntry>();
 

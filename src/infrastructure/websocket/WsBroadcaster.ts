@@ -4,11 +4,7 @@ import type { ClientRegistry } from './ClientRegistry.js';
 import { env } from '../../config/env.js';
 import { metrics } from '../observability/Metrics.js';
 
-/**
- * Implements Broadcaster. The single backpressure mechanism (ADR-B4, no second one) —
- * `ws.bufferedAmount` checked before every write, consecutive-skip eviction at
- * MAX_CONSECUTIVE_SKIPS. No per-client message queue, no separate lag timeout.
- */
+/** Sole backpressure mechanism (ADR-B4): bufferedAmount is checked before each write, eviction after MAX_CONSECUTIVE_SKIPS. No queues. */
 export class WsBroadcaster implements Broadcaster {
   constructor(
     private readonly registry: ClientRegistry,
@@ -27,7 +23,7 @@ export class WsBroadcaster implements Broadcaster {
           this.registry.remove(client);
         }
         metrics.wsMessagesDropped.inc(); // eviction counts as a drop too
-        continue; // skip this client for this tick — no queuing, no retry
+        continue;
       }
 
       client.consecutiveSkips = 0;

@@ -13,16 +13,11 @@ const envSchema = z.object({
   MAX_BUFFERED_BYTES: z.coerce.number().int().positive().default(65536),
   MAX_CONSECUTIVE_SKIPS: z.coerce.number().int().positive().default(10),
 
-  // Overridable so integration tests / a future testnet switch can point the Binance
-  // adapters elsewhere without touching adapter code — real Binance endpoints by default.
-  // z.url() not z.string().url() — the latter is deprecated as of Zod 4 (confirmed against
-  // the installed package's own type definitions, node_modules/zod/v4/classic/schemas.d.ts).
+  // z.url(), not z.string().url() (deprecated in Zod 4).
   BINANCE_REST_BASE_URL: z.url().default('https://api.binance.com'),
   BINANCE_WS_BASE_URL: z.url().default('wss://stream.binance.com:9443/stream'),
 
-  // ADR-B9 defense-in-depth. Comma-separated; empty = no restriction, the sensible default
-  // for local dev (a mobile WebSocket client doesn't send a meaningful browser Origin
-  // header the way a browser tab does) — set explicitly to lock this down.
+  // Comma-separated; empty means no restriction (ADR-B9). Mobile clients send no meaningful Origin.
   ALLOWED_ORIGINS: z.string().default(''),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),

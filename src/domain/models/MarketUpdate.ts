@@ -1,11 +1,10 @@
 import type { OrderBookLevel } from './OrderBook.js';
 
-/** The WebSocket broadcast payload — one per pair, per tick. Wired up in Phase 2. */
 export interface MarketUpdate {
   pair: string;
   /** unix seconds — broadcast tick time */
   timestamp: number;
-  /** ms epoch — same tick's wall-clock time, set ONCE by the conflation engine at broadcast time */
+  /** ms epoch — set once per broadcast tick */
   lastUpdatedAt: number;
   price: number;
   /** percentage, from the @ticker stream — signed, e.g. -2.5 for a 2.5% drop */
