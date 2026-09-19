@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BinanceRestAdapter, toDisplayName } from '../../src/infrastructure/binance/BinanceRestAdapter.js';
+import { BinanceRestAdapter } from '../../src/infrastructure/binance/BinanceRestAdapter.js';
+import { toDisplayName } from '../../src/domain/models/PairMeta.js';
 import type { FetchJsonFn } from '../../src/infrastructure/binance/BinancePairResolver.js';
 import { MARKET_CAP_PLACEHOLDER } from '../../src/domain/models/PairMeta.js';
 

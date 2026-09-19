@@ -5,17 +5,14 @@ import type { FastifyPluginAsync, FastifyServerOptions } from 'fastify';
 import type { GetPairsMeta } from './application/GetPairsMeta.js';
 import pairsRoute from './api/routes/pairs.js';
 import healthRoute from './api/routes/health.js';
-import metricsRoute from './api/routes/metrics.js';
+import metricsRoute, { type MetricsExporter } from './api/routes/metrics.js';
 import { env } from './config/env.js';
 
 export interface AppOptions extends FastifyServerOptions {
   getPairsMeta: GetPairsMeta;
+  metricsExporter: MetricsExporter;
 }
 
-/**
- * Fastify app setup (ADR-B7) — the composition root (server.ts) instantiates this with
- * the GetPairsMeta use-case already wired, since pair resolution has to complete first.
- */
 const app: FastifyPluginAsync<AppOptions> = async (fastify, opts) => {
   await fastify.register(sensible);
 
@@ -29,7 +26,7 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts) => {
   });
 
   await fastify.register(healthRoute);
-  await fastify.register(metricsRoute);
+  await fastify.register(metricsRoute, { exporter: opts.metricsExporter });
   await fastify.register(pairsRoute, { getPairsMeta: opts.getPairsMeta });
 };
 

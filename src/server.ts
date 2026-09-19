@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import { env } from './config/env.js';
 import { REQUIRED_PAIRS } from './config/pairs.js';
 import { logger } from './infrastructure/observability/Logger.js';
-import { metrics } from './infrastructure/observability/Metrics.js';
+import { metrics, metricsRegistry } from './infrastructure/observability/Metrics.js';
 import { resolveSupportedPairs } from './application/ResolveSupportedPairs.js';
 import { BinancePairResolver } from './infrastructure/binance/BinancePairResolver.js';
 import { BinanceRestAdapter } from './infrastructure/binance/BinanceRestAdapter.js';
@@ -52,13 +52,11 @@ async function main(): Promise<void> {
 
   // 4. GetPairsMeta and the broadcast tick are both wired with the same resolved list.
   const restAdapter = new BinanceRestAdapter();
-  const getPairsMeta = new GetPairsMeta(restAdapter, resolvedPairs, REQUIRED_PAIRS, resolvedAt);
+  const getPairsMeta = new GetPairsMeta(restAdapter, resolvedPairs, REQUIRED_PAIRS, resolvedAt, logger);
 
-  // loggerInstance (not logger — that only accepts a plain config object, not a
-  // pre-built pino instance; confirmed against Fastify's own logger-factory.js source
-  // after hitting FST_ERR_LOG_INVALID_LOGGER_CONFIG running this for real).
+  // loggerInstance, not logger: only the former accepts a pre-built pino instance.
   const fastify = Fastify({ loggerInstance: logger });
-  await fastify.register(app, { getPairsMeta });
+  await fastify.register(app, { getPairsMeta, metricsExporter: metricsRegistry });
   await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 
   createWsServer(fastify.server, clientRegistry, {
