@@ -1,5 +1,5 @@
 import type { MetadataProvider } from '../../domain/ports/MetadataProvider.js';
-import type { PairMeta } from '../../domain/models/PairMeta.js';
+import { MARKET_CAP_PLACEHOLDER, type PairMeta } from '../../domain/models/PairMeta.js';
 import { env } from '../../config/env.js';
 import { fetchJson, type FetchJsonFn } from './BinancePairResolver.js';
 
@@ -41,6 +41,7 @@ export class BinanceRestAdapter implements MetadataProvider {
         // quoteVolume (USDT-denominated), not base-asset volume — comparable across pairs,
         // and consistent with the ranking metric ADR-B3's pair resolution already uses.
         volume24h: Number(t.quoteVolume),
+        marketCap: MARKET_CAP_PLACEHOLDER,
       }));
   }
 }

@@ -32,6 +32,9 @@ export const PairMetaSchema = z.object({
   high24h: z.number(),
   low24h: z.number(),
   volume24h: z.number(),
+  // Static placeholder, not live data — Binance's ticker/24hr has no market-cap field
+  // (see domain/models/PairMeta.ts's MARKET_CAP_PLACEHOLDER for why).
+  marketCap: z.number(),
 });
 
 /** GET /pairs/meta response envelope (specs/api-contract.md). */
