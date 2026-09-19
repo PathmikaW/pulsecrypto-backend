@@ -1,5 +1,5 @@
 import type { MetadataProvider } from '../domain/ports/MetadataProvider.js';
-import type { PairMeta, SupportedPairsMeta } from '../domain/models/PairMeta.js';
+import { MARKET_CAP_PLACEHOLDER, type PairMeta, type SupportedPairsMeta } from '../domain/models/PairMeta.js';
 import { toDisplayName } from '../infrastructure/binance/BinanceRestAdapter.js';
 import { logger } from '../infrastructure/observability/Logger.js';
 
@@ -51,5 +51,6 @@ function mockPairMeta(symbol: string): PairMeta {
     high24h: 0,
     low24h: 0,
     volume24h: 0,
+    marketCap: MARKET_CAP_PLACEHOLDER,
   };
 }

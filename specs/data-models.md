@@ -73,6 +73,7 @@ interface PairMeta {
   high24h: number;
   low24h: number;
   volume24h: number;
+  marketCap: number; // static placeholder, not live data — see MARKET_CAP_PLACEHOLDER
 }
 ```
 

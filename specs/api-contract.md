@@ -58,7 +58,8 @@ necessarily just the five required pairs).
       "tradingStatus": "TRADING",
       "high24h": 110500.0,
       "low24h": 107200.0,
-      "volume24h": 18234.552
+      "volume24h": 18234.552,
+      "marketCap": 1200000000000
     }
   ],
   "resolvedAt": "2026-09-17T10:00:00.000Z"
@@ -69,6 +70,10 @@ necessarily just the five required pairs).
   list, cached in-process for 60 seconds (ADR-B6).
 - Fallback: if Binance is unreachable, return mock data for the five required pairs only;
   omit any unresolved additional pairs rather than mocking them.
+- `marketCap` is a static placeholder (`MARKET_CAP_PLACEHOLDER`), not live data — Binance's
+  spot ticker has no market-cap or circulating-supply field, and sourcing a real value would
+  mean adding a second external API (e.g. CoinGecko), which was deliberately out of scope
+  for this endpoint. Present on every pair, real and mock alike, with the same fixed value.
 - This is the endpoint the mobile app's pull-to-refresh calls — it must not touch or
   interrupt the WebSocket connection.
 

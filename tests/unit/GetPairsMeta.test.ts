@@ -14,6 +14,7 @@ const realPairs: PairMeta[] = RESOLVED.map((symbol) => ({
   high24h: 1,
   low24h: 1,
   volume24h: 1,
+  marketCap: 1,
 }));
 
 describe('GetPairsMeta.execute', () => {

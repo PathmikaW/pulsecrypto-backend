@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { BinanceRestAdapter, toDisplayName } from '../../src/infrastructure/binance/BinanceRestAdapter.js';
 import type { FetchJsonFn } from '../../src/infrastructure/binance/BinancePairResolver.js';
+import { MARKET_CAP_PLACEHOLDER } from '../../src/domain/models/PairMeta.js';
 
 describe('toDisplayName', () => {
   it('formats a USDT-quoted symbol as BASE/USDT', () => {
@@ -29,6 +30,7 @@ describe('BinanceRestAdapter.getPairsMeta', () => {
       high24h: 65000,
       low24h: 64000,
       volume24h: 123456.78,
+      marketCap: MARKET_CAP_PLACEHOLDER,
     });
   });
 });
