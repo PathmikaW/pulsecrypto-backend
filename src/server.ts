@@ -65,7 +65,9 @@ async function main(): Promise<void> {
   });
 
   setInterval(() => {
+    const stopTimer = metrics.wsBroadcastLatency.startTimer();
     processMarketTick(stateMap, broadcaster, env.ORDER_BOOK_PRESSURE_DEPTH);
+    stopTimer();
   }, env.BROADCAST_INTERVAL_MS);
 
   wsAdapter.connect(resolvedPairs);
