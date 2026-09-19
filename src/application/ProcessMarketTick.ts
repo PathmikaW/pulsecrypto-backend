@@ -3,11 +3,7 @@ import type { MarketUpdate } from '../domain/models/MarketUpdate.js';
 import type { Broadcaster } from '../domain/ports/Broadcaster.js';
 import { calculatePressureAndSpread } from '../domain/services/PressureCalculator.js';
 
-/**
- * Wires ConflationEngine's output (the state map) + PressureCalculator + Broadcaster on
- * each timer tick (ADR-B7, specs/buffering-strategy.md "Emission"). `lastUpdatedAt` is set
- * exactly once, here, to the tick's own timestamp — never the raw Binance message time.
- */
+/** lastUpdatedAt is set once here to the tick time, never the raw Binance message time. */
 export function processMarketTick(
   stateMap: Map<string, PairState>,
   broadcaster: Broadcaster,

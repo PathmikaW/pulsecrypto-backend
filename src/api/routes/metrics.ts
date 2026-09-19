@@ -1,11 +1,14 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { metricsRegistry } from '../../infrastructure/observability/Metrics.js';
 
-/** GET /metrics — Prometheus exposition format (ADR-B8). */
-const metricsRoute: FastifyPluginAsync = async (fastify) => {
+export interface MetricsExporter {
+  contentType: string;
+  metrics(): Promise<string>;
+}
+
+const metricsRoute: FastifyPluginAsync<{ exporter: MetricsExporter }> = async (fastify, opts) => {
   fastify.get('/metrics', async (_request, reply) => {
-    reply.header('Content-Type', metricsRegistry.contentType);
-    return metricsRegistry.metrics();
+    reply.header('Content-Type', opts.exporter.contentType);
+    return opts.exporter.metrics();
   });
 };
 

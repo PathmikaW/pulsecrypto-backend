@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BinanceRestAdapter, toDisplayName } from '../../src/infrastructure/binance/BinanceRestAdapter.js';
+import { BinanceRestAdapter } from '../../src/infrastructure/binance/BinanceRestAdapter.js';
+import { toDisplayName } from '../../src/domain/models/PairMeta.js';
 import type { FetchJsonFn } from '../../src/infrastructure/binance/BinancePairResolver.js';
 import { MARKET_CAP_PLACEHOLDER } from '../../src/domain/models/PairMeta.js';
 
@@ -32,5 +33,16 @@ describe('BinanceRestAdapter.getPairsMeta', () => {
       volume24h: 123456.78,
       marketCap: MARKET_CAP_PLACEHOLDER,
     });
+  });
+
+  it('aborts the request and rejects when Binance does not answer within the timeout', async () => {
+    const hangingFetch: FetchJsonFn = (_url, signal) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')));
+      });
+
+    const adapter = new BinanceRestAdapter(hangingFetch, 'https://example.test', 20);
+
+    await expect(adapter.getPairsMeta(['BTCUSDT'])).rejects.toThrow('aborted');
   });
 });

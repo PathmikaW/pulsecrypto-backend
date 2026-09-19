@@ -1,11 +1,6 @@
 import type { OrderBookLevel } from './OrderBook.js';
 
-/**
- * Normalized shape produced by BinanceMessageParser from a raw combined-stream message.
- * The combined stream (@depth20@100ms + @ticker per symbol) carries two distinct payload
- * shapes for the same pair — kept as a discriminated union rather than one merged type, so
- * ConflationEngine.applyUpdate only ever touches the fields a given message actually carries.
- */
+/** Discriminated union so applyUpdate only touches the fields a given message carries. */
 export type BinanceStreamUpdate = BinanceDepthUpdate | BinanceTickerUpdate;
 
 export interface BinanceDepthUpdate {

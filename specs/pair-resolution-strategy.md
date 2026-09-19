@@ -6,14 +6,12 @@ Source: ADR-B3. Runs once at startup, before the Binance WebSocket adapter conne
 
 ```typescript
 const LEVERAGED_SUFFIX_PATTERN = /(UP|DOWN|BULL|BEAR)USDT$/;
-const EXCLUDED_QUOTE_ADJACENT_BASES = new Set(
-  ['USDC', 'FDUSD', 'DAI', 'TUSD', 'USD1', 'PYUSD', 'USDG']
-);
+const EXCLUDED_QUOTE_ADJACENT_BASES = new Set(['USDC', 'FDUSD', 'DAI', 'TUSD', 'USD1', 'PYUSD', 'USDG']);
 
 async function resolveSupportedPairs(
-  requiredSymbols: string[],   // from REQUIRED_PAIRS env var
-  extraCount: number,          // EXTRA_PAIRS_COUNT, default 3
-  timeoutMs: number            // PAIR_RESOLUTION_TIMEOUT_MS, default 5000
+  requiredSymbols: string[], // from REQUIRED_PAIRS env var
+  extraCount: number, // EXTRA_PAIRS_COUNT, default 3
+  timeoutMs: number // PAIR_RESOLUTION_TIMEOUT_MS, default 5000
 ): Promise<string[]> {
   try {
     const [info, tickers] = await withTimeout(
@@ -26,24 +24,23 @@ async function resolveSupportedPairs(
 
     const tradable = new Set(
       info.symbols
-        .filter(s =>
-          s.status === 'TRADING' &&
-          s.quoteAsset === 'USDT' &&
-          s.isSpotTradingAllowed &&
-          !LEVERAGED_SUFFIX_PATTERN.test(s.symbol) &&
-          !EXCLUDED_QUOTE_ADJACENT_BASES.has(s.baseAsset)
+        .filter(
+          (s) =>
+            s.status === 'TRADING' &&
+            s.quoteAsset === 'USDT' &&
+            s.isSpotTradingAllowed &&
+            !LEVERAGED_SUFFIX_PATTERN.test(s.symbol) &&
+            !EXCLUDED_QUOTE_ADJACENT_BASES.has(s.baseAsset)
         )
-        .map(s => s.symbol)
+        .map((s) => s.symbol)
     );
 
     const rankedByVolume = tickers
-      .filter(t => tradable.has(t.symbol))
+      .filter((t) => tradable.has(t.symbol))
       .sort((a, b) => Number(b.quoteVolume) - Number(a.quoteVolume))
-      .map(t => t.symbol);
+      .map((t) => t.symbol);
 
-    const extra = rankedByVolume
-      .filter(s => !requiredSymbols.includes(s))
-      .slice(0, extraCount);
+    const extra = rankedByVolume.filter((s) => !requiredSymbols.includes(s)).slice(0, extraCount);
 
     return [...requiredSymbols, ...extra];
   } catch (err) {
@@ -84,13 +81,12 @@ async function resolveSupportedPairs(
    the length of the resolved list — this is how a fallback is observable in production
    without grepping logs.
 
-## Background retry (fallback recovery)
+## Background retry (fallback recovery) — NOT IMPLEMENTED, documented known limitation
 
-If the initial resolution fell back to required-only, a background retry (interval TBD by
-implementer — a reasonable default is every 5 minutes) re-attempts full resolution without
-requiring a process restart. On success, update the in-memory resolved list and the
-`ws` adapter's subscription (reconnecting the combined stream with the expanded pair set),
-and update the `supported_pairs_count` gauge. This is a "nice to have" relative to the
-assignment's mandatory scope — if time is constrained, document it as a known limitation
-(fallback is permanent until restart) rather than skipping the required-pairs guarantee
-itself.
+An earlier version of this spec proposed a background retry that would re-attempt full
+resolution after a fallback and reconnect the combined stream with the expanded pair set.
+**It was deliberately not built** (the spec allowed this as a "nice to have" relative to the
+assignment's mandatory scope): resolution runs exactly once per process lifetime, and a
+process that fell back to the required five keeps them until it is restarted. The required-
+pairs guarantee is unaffected. `pulsecrypto_supported_pairs_count` (ADR-B8) shows in
+production whether the fallback path was taken.

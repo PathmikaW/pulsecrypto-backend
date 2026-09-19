@@ -9,12 +9,7 @@ export interface WsServerOptions {
   maxConnectionsPerIp: number;
 }
 
-/**
- * Attaches a `ws` server directly to Fastify's underlying HTTP server (ADR-B2 — `ws`
- * alongside Fastify, not a Fastify WebSocket plugin). Handles the inbound connection
- * lifecycle (origin allowlist, per-IP connection cap, ClientRegistry bookkeeping) —
- * separate from WsBroadcaster, which only handles outbound backpressure.
- */
+/** Inbound lifecycle only (origin allowlist, per-IP cap, registry bookkeeping); outbound backpressure is WsBroadcaster's (ADR-B2). */
 export function createWsServer(
   httpServer: HttpServer,
   registry: ClientRegistry,

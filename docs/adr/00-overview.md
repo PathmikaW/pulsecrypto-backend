@@ -3,8 +3,8 @@
 ### Real-Time Cryptocurrency Market Viewer — Technical Design & Rationale
 
 **Document type:** Architecture Decision Record (ADR)
-**Version:** 9.0
-**Status:** Approved for implementation — updated post-submission with real-device findings
+**Version:** 9.2
+**Status:** Approved for implementation — reconciled against the completed solution (v9.1); where an earlier section describes a design that was not built, a dated note says so
 
 ---
 
@@ -51,7 +51,7 @@ it (backend skips mobile decisions, mobile skips backend decisions), noted per l
 
 1. Executive Summary — this file, below
 2. [Backend Architecture Decisions](01-backend-decisions.md) — ADR-B1–B9. **Backend repo + project root only** — not mirrored into `pulsecrypto-mobile`.
-3. [Mobile Architecture Decisions](02-mobile-decisions.md) — ADR-M1–M11. **Mobile repo + project root only** — not mirrored into `pulsecrypto-backend`.
+3. [Mobile Architecture Decisions](02-mobile-decisions.md) — ADR-M1–M12. **Mobile repo + project root only** — not mirrored into `pulsecrypto-backend`.
 4. [Cross-Cutting Decisions](03-cross-cutting-decisions.md) — ADR-X1–X7. All three locations — read when touching git/CI/contracts/deployment/scaffolding/session process.
 5. [Technology Stack Summary](04-tech-stack.md) — versions, env vars. All three locations.
 6. [Delivery Plan](05-delivery-plan.md) — phase sequence. All three locations.

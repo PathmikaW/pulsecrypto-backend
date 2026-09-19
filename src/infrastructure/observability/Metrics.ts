@@ -1,9 +1,6 @@
 import { Counter, Gauge, Histogram, register } from '@prometheus-io/client';
 
-// @prometheus-io/client is the official Prometheus org package — prom-client (the
-// community package this project originally planned per ADR-B8) is deprecated in its
-// favor as of this scaffold. Same lineage/API (it was previously published as
-// prom-client), not a rewrite, so this is a safe substitution.
+// @prometheus-io/client is the official successor to prom-client (ADR-B8); same API.
 
 export const metrics = {
   wsConnectionsActive: new Gauge({

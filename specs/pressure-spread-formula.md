@@ -46,12 +46,14 @@ don't assume the caller always truncates correctly.
 ## Worked example (for the unit test fixture)
 
 Given an order book snapshot where:
+
 - Highest bid price: `109235.42`
 - Lowest ask price: `109238.10`
 - Top 10 bid levels sum to `45.200` (quantity)
 - Top 10 ask levels sum to `38.700` (quantity)
 
 Expected output:
+
 ```
 Spread          = 109238.10 - 109235.42 = 2.68
 Total            = 45.200 + 38.700 = 83.900
@@ -86,9 +88,7 @@ function calculatePressureAndSpread(
   // Fix: if either side is empty, spread cannot be computed — default to 0 rather than
   // NaN/undefined, and let the caller's emptiness (bids.length === 0 || asks.length === 0)
   // be the actual signal consumers check, not the numeric value of spread itself.
-  const spread = highestBid !== undefined && lowestAsk !== undefined
-    ? lowestAsk - highestBid
-    : 0;
+  const spread = highestBid !== undefined && lowestAsk !== undefined ? lowestAsk - highestBid : 0;
 
   const bidVolume = topBids.reduce((sum, l) => sum + l.quantity, 0);
   const askVolume = topAsks.reduce((sum, l) => sum + l.quantity, 0);
@@ -112,6 +112,7 @@ above exist so the calculation never throws or returns `NaN` — they are not me
 displayed to a user as a genuine 0 spread or an even 50/50 market.
 
 **Test cases to add**, beyond the worked example above:
+
 - Empty bids and empty asks together → `{ spread: 0, buyPressure: 50, sellPressure: 50 }`.
 - Fewer than `depth` levels on one side (e.g. only 6 ask levels exist while `depth = 10`) —
   sum whatever is actually present; don't pad missing levels with zero-quantity entries or
