@@ -62,6 +62,7 @@ async function main(): Promise<void> {
   createWsServer(fastify.server, clientRegistry, {
     allowedOrigins: env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : [],
     maxConnectionsPerIp: env.MAX_CONNECTIONS_PER_IP,
+    maxTotalConnections: env.MAX_TOTAL_CONNECTIONS,
   });
 
   setInterval(() => {

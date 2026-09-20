@@ -22,6 +22,8 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   MAX_CONNECTIONS_PER_IP: z.coerce.number().int().positive().default(5),
+  // Hard ceiling on concurrent WebSocket clients, whatever their addresses (each streams ~126 KB/s).
+  MAX_TOTAL_CONNECTIONS: z.coerce.number().int().positive().default(100),
 });
 
 export type Env = z.infer<typeof envSchema>;

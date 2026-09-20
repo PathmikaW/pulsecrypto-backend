@@ -12,11 +12,18 @@ import { MarketUpdateSchema } from '../../contracts/schemas.js';
 let server: FastifyInstance;
 const clients: WebSocket[] = [];
 
-async function startServer(allowedOrigins: string[] = []) {
+async function startServer(
+  allowedOrigins: string[] = [],
+  limits: { maxConnectionsPerIp?: number; maxTotalConnections?: number } = {}
+) {
   server = Fastify();
   await server.listen({ port: 0, host: '127.0.0.1' });
   const registry = new ClientRegistry();
-  createWsServer(server.server, registry, { allowedOrigins, maxConnectionsPerIp: 10 });
+  createWsServer(server.server, registry, {
+    allowedOrigins,
+    maxConnectionsPerIp: limits.maxConnectionsPerIp ?? 10,
+    maxTotalConnections: limits.maxTotalConnections ?? 100,
+  });
   const port = (server.server.address() as AddressInfo).port;
   return { registry, url: `ws://127.0.0.1:${port}` };
 }
@@ -99,5 +106,18 @@ describe('WebSocket broadcast', () => {
     await waitFor(() => registry.size === 0);
 
     expect(registry.size).toBe(0);
+  });
+
+  it('rejects a connection over the total cap with 503 and admits one again after a client leaves', async () => {
+    const { registry, url } = await startServer([], { maxTotalConnections: 2 });
+    const first = await connect(url);
+    await connect(url);
+    await waitFor(() => registry.size === 2);
+
+    await expect(connect(url)).rejects.toThrow(/503/);
+
+    first.close();
+    await waitFor(() => registry.size === 1);
+    await expect(connect(url)).resolves.toBeDefined();
   });
 });

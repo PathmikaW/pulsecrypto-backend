@@ -7,9 +7,11 @@ export interface WsServerOptions {
   /** Empty = no restriction (ADR-B9's documented default for local dev). */
   allowedOrigins: string[];
   maxConnectionsPerIp: number;
+  /** Hard cap on concurrent clients across all addresses. */
+  maxTotalConnections: number;
 }
 
-/** Inbound lifecycle only (origin allowlist, per-IP cap, registry bookkeeping); outbound backpressure is WsBroadcaster's (ADR-B2). */
+/** Inbound lifecycle only (origin allowlist, total and per-IP caps, registry bookkeeping); outbound backpressure is WsBroadcaster's (ADR-B2). */
 export function createWsServer(
   httpServer: HttpServer,
   registry: ClientRegistry,
@@ -22,6 +24,11 @@ export function createWsServer(
     verifyClient: (info, callback) => {
       if (options.allowedOrigins.length > 0 && !options.allowedOrigins.includes(info.origin)) {
         callback(false, 403, 'Forbidden origin');
+        return;
+      }
+
+      if (registry.size >= options.maxTotalConnections) {
+        callback(false, 503, 'Server at capacity');
         return;
       }
 
