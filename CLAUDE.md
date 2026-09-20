@@ -65,7 +65,7 @@ this same boundary stated for the mobile repo.
 
 ## Evaluation context — why "correct-enough" isn't the bar here
 
-This is a Staff Engineer / Architect (Mobile Apps) practical assignment. The reviewer is
+This is a practical assignment. The reviewer is
 evaluating the architecture, the specific decisions made and their rationale, and code
 quality — not only whether the app runs. Concretely, this means:
 
@@ -119,7 +119,7 @@ a diff ever shows a secret about to be staged, stop and flag it rather than proc
 
 Never commit directly to `main` or `develop`.
 
-- `develop` is the integration branch. All day-to-day work happens on a `feature/*` branch
+- `develop` is the integration branch. All day-to-day work happens on a `feature/*` (new functionality) or `fix/*` (bug fix) branch
   cut **from `develop`**, e.g. `feature/binance-pair-resolver`,
   `feature/websocket-backpressure`, `feature/pairs-meta-endpoint`. PR back into `develop`,
   squash merge.
@@ -130,7 +130,7 @@ Never commit directly to `main` or `develop`.
   completion, merge into both `main` (tag it) and back into `develop`.
 - `hotfix/*` branches (e.g. `hotfix/reconnection-timeout`) cut from `main` for an urgent
   fix to already-released code. Merge into both `main` (tag it) and `develop`.
-- If you're not sure whether something is a `feature/*`, `release/*`, or `hotfix/*` — it's
+- If you're not sure whether something is a `feature/*`, `fix/*`, `release/*`, or `hotfix/*` — it's
   almost always `feature/*`, cut from `develop`. `release/*` and `hotfix/*` are for the
   specific stabilization/patch scenarios above, not a default choice.
 

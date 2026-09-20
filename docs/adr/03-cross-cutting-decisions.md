@@ -48,13 +48,13 @@
 
 **Context.** A branching and commit convention is needed, alongside automated local enforcement of code quality before anything reaches shared history — relying on CI alone means problems are caught minutes after a push instead of seconds before a commit, and relying on human discipline alone means they're sometimes not caught at all.
 
-**Decision.** Gitflow — a persistent `develop` integration branch, short-lived `feature/*` branches off it, `release/*` branches for stabilizing a set of features, and `hotfix/*` branches for urgent post-release fixes, with `main` reserved exclusively for tagged, released code — alongside Conventional Commits and the same three-stage Husky hook pipeline, applied identically in both repositories.
+**Decision.** Gitflow — a persistent `develop` integration branch, short-lived `feature/*` (new functionality) and `fix/*` (bug fixes) branches off it, `release/*` branches for stabilizing a set of features, and `hotfix/*` branches for urgent post-release fixes, with `main` reserved exclusively for tagged, released code — alongside Conventional Commits and the same three-stage Husky hook pipeline, applied identically in both repositories.
 
 **Branching:**
 
 ```
 main (production-only, protected, tagged releases — receives merges only from release/* or hotfix/*)
- └── develop (integration branch, always green, protected — receives merges only from feature/* or release/*)
+ └── develop (integration branch, always green, protected — receives merges only from feature/*, fix/* or release/*)
       ├── feature/backend-binance-client
       ├── feature/backend-pair-resolver
       ├── feature/backend-ws-server
@@ -67,7 +67,7 @@ main (production-only, protected, tagged releases — receives merges only from 
                                       merges into both main, tagged, and develop)
 ```
 
-- `feature/*` branches off `develop`, PR'd and merged back into `develop` (the actual history shows GitHub merge commits, `Merge pull request #N`, not squashes).
+- `feature/*` and `fix/*` branches off `develop`, PR'd and merged back into `develop` (the actual history shows GitHub merge commits, `Merge pull request #N`, not squashes).
 - `release/*` branches off `develop` once a coherent set of features is ready to stabilize;
   only bug fixes are permitted on a release branch, never new feature work; on completion
   it merges into both `main` (tagged, e.g. `v1.0.0`) and back into `develop`, so any
@@ -78,7 +78,7 @@ main (production-only, protected, tagged releases — receives merges only from 
   `release/*` or `hotfix/*` branch, so its history reads as a sequence of releases, not
   day-to-day development noise.
 
-**Status (v9.4).** All work so far has flowed `feature/*` / `fix/*` → `develop` through pull requests, and `develop` is the GitHub default branch of both repositories, so a reviewer who clones either repo sees the real code. `release/v1.0.0` has been cut from `develop` in both repositories and kept identical to it (the one release fix, the backend Dockerfile, went `fix/*` → `develop` and the release branch was fast-forwarded). The last steps of Gitflow have **not** happened yet: `release/v1.0.0` has not been merged into `main` (still the empty initial commit), no `v1.0.0` tag exists, and there has been no back-merge because nothing needs one until `main` is touched. The three-stage Husky pipeline is identical in both repositories — before v9.1 the mobile `pre-push` hook ran only `tsc --noEmit` (a stale TODO said to add the tests once they existed).
+**Status (v9.5).** Gitflow was completed end to end in both repositories. All work flowed `feature/*` / `fix/*` → `develop` through pull requests, and `develop` is the GitHub default branch, so a reviewer who clones either repo sees the real code. `release/v1.0.0` was cut from `develop` in both repositories and kept identical to it (release fixes — the backend Dockerfile, then the mobile release-build dependencies and three UI alignment fixes — went `fix/*` → `develop`, and the release branch was fast-forwarded to match). `release/v1.0.0` was then merged into `main` with a merge commit (not a squash, so `develop` stays a descendant of `main`), `v1.0.0` was tagged on `main`, and `main` was merged back into `develop`. `fix/*` is used for bug-fix branches alongside `feature/*`; both are cut from `develop` and merged by pull request. The three-stage Husky pipeline is identical in both repositories — before v9.1 the mobile `pre-push` hook ran only `tsc --noEmit` (a stale TODO said to add the tests once they existed).
 
 **Conventional Commits, examples:**
 
@@ -183,7 +183,7 @@ jobs:
       - expo prebuild + expo run:android build check (no EAS dependency)
 ```
 
-**Rationale.** Automated checks catch issues before merge and demonstrate the CI/CD discipline the role calls for; each step maps to a specific risk this document has already named (contract drift, type errors, regressions, a broken native build). The backend has no contracts-check step of its own, since it is the source of truth the mobile repository checks itself against, not the other way around.
+**Rationale.** Automated checks catch issues before merge and demonstrate CI/CD discipline; each step maps to a specific risk this document has already named (contract drift, type errors, regressions, a broken native build). The backend has no contracts-check step of its own, since it is the source of truth the mobile repository checks itself against, not the other way around.
 
 **Trade-offs accepted.** CI run time — kept short and proportionate to this project's scope.
 
@@ -233,13 +233,13 @@ services:
 
 _(No top-level `version:` key — deprecated in the current Compose spec; modern Compose ignores/warns on it. Base image uses `node:24-alpine` — see §5 for why Node 24 specifically.)_
 
-**Status (v9.4).** The image is now build- and run-verified: `docker build` and `docker run` succeeded on a Linux VM (Amazon Linux 2023, x86-64, 1 GB RAM plus a 1 GB swap file for the build), and the container served `/health`, `/pairs/meta` and the WebSocket with all eight pairs resolved. The first attempt **failed**: `pnpm install --frozen-lockfile` stopped with `ERR_PNPM_IGNORED_BUILDS` for esbuild, because `pnpm-workspace.yaml` (which holds the `allowBuilds` approval) was not copied into the builder stage before the install. The Dockerfile now copies it alongside `package.json` and the lockfile, as in the listing above. `docker-compose up` itself has not been run — the compose file is unexercised — and no Docker is installed on the development laptop. One known imprecision remains: the runtime stage copies the builder's whole `node_modules`, devDependencies included, so "build tooling never ships" is true of the TypeScript sources but not of dev packages; `pnpm prune --prod` in the builder before the copy is the standard fix, left unapplied. _(Through v9.3 this note said the image had never been built.)_
+**Status (v9.4).** The image is now build- and run-verified: `docker build` and `docker run` succeeded on a Linux VM (Amazon Linux 2023, x86-64, 1 GB RAM plus a 1 GB swap file for the build), and the container served `/health`, `/pairs/meta` and the WebSocket with all eight pairs resolved. The first attempt **failed**: `pnpm install --frozen-lockfile` stopped with `ERR_PNPM_IGNORED_BUILDS` for esbuild, because `pnpm-workspace.yaml` (which holds the `allowBuilds` approval) was not copied into the builder stage before the install. The Dockerfile now copies it alongside `package.json` and the lockfile, as in the listing above. `docker-compose up` itself has not been run — the compose file is unexercised — and no Docker is installed on the development laptop. One known imprecision remains: the runtime stage copies the builder's whole `node_modules`, devDependencies included, so "build tooling never ships" is true of the TypeScript sources but not of dev packages; `pnpm prune --prod` in the builder before the copy is the standard fix, left unapplied. _(Through v9.3 this note said the image had never been built.)_ _(v9.5: the same image also runs on a t3.micro EC2 instance behind Caddy with a free DuckDNS hostname, giving the shareable mobile APK an `https://`/`wss://` backend — `pulsecrypto-backend/docs/deployment-aws-ec2.md`. The instance stops itself after six hours and is started only for demos and testing.)_
 
 **Rationale.**
 
 1. A non-root user and a minimal base image are standard container-security practice.
 2. A multi-stage build keeps sources and the compile step out of the runtime image (see the v9.1 status note above on devDependencies).
-3. This is also the natural on-ramp to the AWS/Kubernetes deployment context the role describes, without building infrastructure beyond what this exercise can meaningfully demonstrate. Unlike the contracts-package decision above, adopting Docker here doesn't introduce any install-time risk for a reviewer — `pnpm dev` still works standalone, with or without Docker — so there was no corresponding reason to simplify it away.
+3. This is also the natural on-ramp to a typical AWS/Kubernetes deployment path, without building infrastructure beyond what this exercise can meaningfully demonstrate. Unlike the contracts-package decision above, adopting Docker here doesn't introduce any install-time risk for a reviewer — `pnpm dev` still works standalone, with or without Docker — so there was no corresponding reason to simplify it away.
 
 **Trade-offs accepted.** One additional file to maintain, in exchange for a portable, reproducible runtime.
 
@@ -426,7 +426,7 @@ instance, conversation, or point in this project's timeline is running:
    "verify the actual state, don't trust the log of what you intended to do" — applied
    specifically to the failure mode AI coding sessions are most prone to:** a fluent,
    confident narration of success that was never checked against the real, resulting
-   system state. The role's own emphasis on AI-assisted development being evaluated
+   system state. The assignment's emphasis on how AI-assisted development is used
    (Executive Summary) makes this a direct quality bar, not an abstract concern.
 3. **Stated as an ADR, not only as CLAUDE.md guidance, because it is exactly as real and
    binding a process decision as ADR-X2 (Gitflow) or ADR-X5 (manual scaffolding) — the
