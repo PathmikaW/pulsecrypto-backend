@@ -121,6 +121,46 @@ curl http://$IP:3000/pairs/meta      # expect 8 pairs (5 required + 3 resolved)
 
 Only 5 pairs means pair resolution fell back — usually Binance rejecting the region's IP range.
 
+## Optional: HTTPS/WSS with Caddy and a free DuckDNS hostname
+
+A release build of the mobile app refuses `http`/`ws` (ADR-M6), so a standalone APK needs TLS in front of
+the server. This adds Caddy (free, automatic Let's Encrypt certificates) on the same instance, at no extra cost.
+
+1. **Create a hostname** at [duckdns.org](https://www.duckdns.org): add a subdomain (for example
+   `pulsecrypto`) and copy your **token**. The token is a secret — anyone holding it can repoint your
+   hostname and intercept traffic. Save it to a local file (`~/.duckdns_token`), never in the repository or
+   in chat, and regenerate it if it is ever exposed.
+2. **Open the firewall for TLS** instead of port 3000: TCP **80** and **443** (port 80 is used for the
+   certificate challenge). The backend is then reachable only through Caddy.
+   ```bash
+   aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 80  --cidr 0.0.0.0/0
+   aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 443 --cidr 0.0.0.0/0
+   ```
+3. **Launch with the hostname settings** by filling the three variables at the top of the boot script into a
+   temporary copy, so the token never touches the repository:
+   ```bash
+   sed -e 's|^DOMAIN=.*|DOMAIN="pulsecrypto.duckdns.org"|' \
+       -e 's|^DUCKDNS_SUBDOMAIN=.*|DUCKDNS_SUBDOMAIN="pulsecrypto"|' \
+       -e "s|^DUCKDNS_TOKEN=.*|DUCKDNS_TOKEN=\"$(cat ~/.duckdns_token)\"|" \
+       deploy/aws-ec2-user-data.sh > /tmp/userdata.tls.sh
+   # ...then pass --user-data file:///tmp/userdata.tls.sh to run-instances, and delete the file afterwards
+   ```
+   The token stays in the instance's user data (visible to anyone allowed to read it in the AWS account) and in
+   a root-only file on the instance; rotate it when you are done.
+4. **Verify:** `curl https://pulsecrypto.duckdns.org/health`. The first certificate takes a minute.
+5. **What changes:** the DuckDNS record is updated on every boot, so restarting the instance keeps the same
+   hostname; the backend runs with `TRUST_PROXY=true` (per-IP limits use the real client address) and
+   `MAX_TOTAL_CONNECTIONS` (default 10 in the boot script) as a hard ceiling; port 3000 is not published.
+6. **Point the app at it** — no port, `https`/`wss`:
+   ```
+   EXPO_PUBLIC_API_BASE_URL=https://pulsecrypto.duckdns.org
+   EXPO_PUBLIC_WS_BASE_URL=wss://pulsecrypto.duckdns.org
+   ```
+   A standalone build with these values works from any network: `pnpm expo run:android --variant release`.
+
+DuckDNS is a free third-party service with no availability guarantee. Do not use `sslip.io` for this: its
+shared Let's Encrypt quota is regularly exhausted.
+
 ## Use it from the mobile app
 
 In `pulsecrypto-mobile/.env` (gitignored):
@@ -132,7 +172,7 @@ EXPO_PUBLIC_WS_BASE_URL=ws://<ip>:3000
 
 Then restart Metro with `pnpm expo start --dev-client --clear`. This plaintext setup works for the
 emulator and development builds only; a release build refuses non-`https`/`wss` URLs, so a
-release build would need TLS in front of the server (not covered here).
+standalone build needs the HTTPS/WSS option above.
 
 ## Day-to-day
 
@@ -148,6 +188,6 @@ release build would need TLS in front of the server (not covered here).
 
 ## Limits of this setup
 
-Plain HTTP/WS (no TLS), one instance, no monitoring beyond the `/metrics` endpoint, no automatic
+Plain HTTP/WS unless you use the TLS option, one instance, no monitoring beyond the `/metrics` endpoint, no automatic
 redeploys — it is a demo host, not production infrastructure. The container image still contains the
 builder's dev dependencies (see ADR-X4).

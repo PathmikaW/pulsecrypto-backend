@@ -94,7 +94,8 @@ Things worth knowing before you do:
 - **A hosted copy is private.** The instance used for this submission only accepts connections from
   the owner's IP address, and it stops itself after six hours. If you want to try the mobile app
   against it, ask the repository owner (see the mobile README, _Configuration and access_).
-- **Plain `http`/`ws`** — fine for the emulator and development builds; a release build needs TLS.
+- **Plain `http`/`ws` by default** — fine for the emulator and development builds. A release build needs
+  TLS; the guide includes an optional Caddy + free DuckDNS setup for that.
 
 ---
 
