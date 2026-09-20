@@ -81,6 +81,8 @@
 | `RATE_LIMIT_MAX`             | `100`                                      | REST requests per window per IP                                                                                          |
 | `RATE_LIMIT_WINDOW_MS`       | `60000`                                    | Rate-limit window                                                                                                        |
 | `MAX_CONNECTIONS_PER_IP`     | `5`                                        | Concurrent WebSocket connections per address                                                                             |
+| `MAX_TOTAL_CONNECTIONS`      | `100`                                      | Hard ceiling on concurrent WebSocket clients across all addresses                                                        |
+| `TRUST_PROXY`                | `false`                                    | Read the client address from `X-Forwarded-For`; only behind a trusted reverse proxy                                      |
 
 **Mobile** (`.env`, inlined at build time because of the `EXPO_PUBLIC_` prefix): `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_WS_BASE_URL` — `http://10.0.2.2:3000` / `ws://10.0.2.2:3000` for the Android Emulator reaching a backend on the host. Outside `__DEV__` the app refuses to start unless both are `https://`/`wss://` (ADR-M6).
 
