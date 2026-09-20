@@ -14,7 +14,7 @@ const clients: WebSocket[] = [];
 
 async function startServer(
   allowedOrigins: string[] = [],
-  limits: { maxConnectionsPerIp?: number; maxTotalConnections?: number } = {}
+  limits: { maxConnectionsPerIp?: number; maxTotalConnections?: number; trustProxy?: boolean } = {}
 ) {
   server = Fastify();
   await server.listen({ port: 0, host: '127.0.0.1' });
@@ -23,14 +23,15 @@ async function startServer(
     allowedOrigins,
     maxConnectionsPerIp: limits.maxConnectionsPerIp ?? 10,
     maxTotalConnections: limits.maxTotalConnections ?? 100,
+    trustProxy: limits.trustProxy ?? false,
   });
   const port = (server.server.address() as AddressInfo).port;
   return { registry, url: `ws://127.0.0.1:${port}` };
 }
 
-function connect(url: string, origin?: string): Promise<WebSocket> {
+function connect(url: string, origin?: string, headers?: Record<string, string>): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url, origin ? { origin } : undefined);
+    const ws = new WebSocket(url, { ...(origin ? { origin } : {}), ...(headers ? { headers } : {}) });
     clients.push(ws);
     ws.once('open', () => resolve(ws));
     ws.once('error', reject);
@@ -119,5 +120,22 @@ describe('WebSocket broadcast', () => {
     first.close();
     await waitFor(() => registry.size === 1);
     await expect(connect(url)).resolves.toBeDefined();
+  });
+
+  it('applies the per-IP cap to the socket address when the proxy is not trusted, ignoring X-Forwarded-For', async () => {
+    const { registry, url } = await startServer([], { maxConnectionsPerIp: 1, trustProxy: false });
+    await connect(url, undefined, { 'x-forwarded-for': '203.0.113.1' });
+    await waitFor(() => registry.size === 1);
+
+    await expect(connect(url, undefined, { 'x-forwarded-for': '203.0.113.2' })).rejects.toThrow(/429/);
+  });
+
+  it('applies the per-IP cap to the forwarded client address when the proxy is trusted', async () => {
+    const { registry, url } = await startServer([], { maxConnectionsPerIp: 1, trustProxy: true });
+    await connect(url, undefined, { 'x-forwarded-for': '203.0.113.1' });
+    await connect(url, undefined, { 'x-forwarded-for': '203.0.113.2' });
+    await waitFor(() => registry.size === 2);
+
+    await expect(connect(url, undefined, { 'x-forwarded-for': '203.0.113.1' })).rejects.toThrow(/429/);
   });
 });

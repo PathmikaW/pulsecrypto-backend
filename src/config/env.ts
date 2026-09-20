@@ -24,6 +24,12 @@ const envSchema = z.object({
   MAX_CONNECTIONS_PER_IP: z.coerce.number().int().positive().default(5),
   // Hard ceiling on concurrent WebSocket clients, whatever their addresses (each streams ~126 KB/s).
   MAX_TOTAL_CONNECTIONS: z.coerce.number().int().positive().default(100),
+  // Only set to true behind a reverse proxy that overwrites X-Forwarded-For (e.g. Caddy) and only when the
+  // backend port is not reachable directly, otherwise a client could spoof its address.
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

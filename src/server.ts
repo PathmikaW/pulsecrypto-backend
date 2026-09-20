@@ -55,7 +55,7 @@ async function main(): Promise<void> {
   const getPairsMeta = new GetPairsMeta(restAdapter, resolvedPairs, REQUIRED_PAIRS, resolvedAt, logger);
 
   // loggerInstance, not logger: only the former accepts a pre-built pino instance.
-  const fastify = Fastify({ loggerInstance: logger });
+  const fastify = Fastify({ loggerInstance: logger, trustProxy: env.TRUST_PROXY });
   await fastify.register(app, { getPairsMeta, metricsExporter: metricsRegistry });
   await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 
@@ -63,6 +63,7 @@ async function main(): Promise<void> {
     allowedOrigins: env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : [],
     maxConnectionsPerIp: env.MAX_CONNECTIONS_PER_IP,
     maxTotalConnections: env.MAX_TOTAL_CONNECTIONS,
+    trustProxy: env.TRUST_PROXY,
   });
 
   setInterval(() => {
