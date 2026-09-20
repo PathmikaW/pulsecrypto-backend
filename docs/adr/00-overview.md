@@ -3,7 +3,7 @@
 ### Real-Time Cryptocurrency Market Viewer — Technical Design & Rationale
 
 **Document type:** Architecture Decision Record (ADR)
-**Version:** 9.4
+**Version:** 9.5
 **Status:** Approved for implementation — reconciled against the completed solution (v9.1); where an earlier section describes a design that was not built, a dated note says so
 
 ---
@@ -14,7 +14,7 @@ This document records the architectural decisions behind PulseCrypto ahead of im
 
 The reasoning behind a decision is what makes it possible to evaluate, maintain, and safely change later — the goal is that another engineer can see not just what was built, but why, and what alternatives were weighed and rejected.
 
-Two inputs shaped every decision below: the assignment's explicit functional and non-functional requirements, and the broader engineering expectations described in the Staff Engineer / Architect – Mobile Apps role. Where a minimal implementation and a production-grade one would diverge, this document is explicit about which was chosen and why — the target throughout was a design defensible as something that could genuinely ship, not one scoped only to satisfy a checklist. Equally, where a production-grade pattern would have introduced complexity or risk disproportionate to what it protects against in this specific context, that's stated plainly too — production-grade thinking includes knowing when _not_ to add a layer, not only when to add one.
+Two inputs shaped every decision below: the assignment's explicit functional and non-functional requirements, and the broader engineering expectations for a maintainable, production-grade system. Where a minimal implementation and a production-grade one would diverge, this document is explicit about which was chosen and why — the target throughout was a design defensible as something that could genuinely ship, not one scoped only to satisfy a checklist. Equally, where a production-grade pattern would have introduced complexity or risk disproportionate to what it protects against in this specific context, that's stated plainly too — production-grade thinking includes knowing when _not_ to add a layer, not only when to add one.
 
 ---
 
@@ -75,8 +75,8 @@ The system is designed around five structural principles, each expanded into con
 
 - **Correctness of the required scope is never conditional.** The five mandatory trading pairs are always served, regardless of the state of any optional or dynamic feature.
 - **Memory and performance bounds are structural, not tuned.** Backpressure and buffering are designed so that the failure modes the assignment calls out — unbounded memory growth under slow consumers, UI jank under sustained bursts — are prevented by the shape of the design, not by adjusting constants after the fact.
-- **Architecture boundaries are enforced, not just named.** Both the backend and mobile codebases use structures where the dependency direction is explicit and checkable, consistent with the SOLID, GRASP, and Clean/Hexagonal Architecture principles the role emphasizes.
+- **Architecture boundaries are enforced, not just named.** Both the backend and mobile codebases use structures where the dependency direction is explicit and checkable, consistent with the SOLID, GRASP, and Clean/Hexagonal Architecture principles the design follows.
 - **External facts are verified, not assumed.** Where a decision rests on a claim about the current state of a library, a company's technology choices, a third-party service's behavior, or live market data, that claim is checked against a current source rather than taken from memory — and documented with appropriate honesty, including counter-evidence where it exists. This includes the technology stack's version numbers themselves (§5), checked as of this document's date rather than assumed from training knowledge.
-- **Complexity is added deliberately, in both directions.** Some decisions add structure the assignment doesn't strictly require, because the role's stated standards call for it (see ADR-B7, ADR-M2, ADR-M9). Others were initially over-built and were simplified after review, because the risk or overhead didn't match what was actually being protected against (see ADR-X1, ADR-M6). Both are the same underlying discipline applied honestly, not a bias toward adding layers.
+- **Complexity is added deliberately, in both directions.** Some decisions add structure the assignment doesn't strictly require, because production-grade standards call for it (see ADR-B7, ADR-M2, ADR-M9). Others were initially over-built and were simplified after review, because the risk or overhead didn't match what was actually being protected against (see ADR-X1, ADR-M6). Both are the same underlying discipline applied honestly, not a bias toward adding layers.
 
 ---

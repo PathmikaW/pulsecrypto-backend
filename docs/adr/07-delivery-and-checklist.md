@@ -54,7 +54,7 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 
 ## 11. Final Pre-Submission Checklist
 
-**Status as of v9.1.** `[x]` means verified against the running system or the code in this session (evidence in the note); `[ ]` means not done, not verifiable here, or needing the developer's own sign-off. Nothing is ticked on the strength of the design alone.
+**Status as of v9.5 (checks from v9.1 unless noted).** `[x]` means verified against the running system or the code in this session (evidence in the note); `[ ]` means not done, not verifiable here, or needing the developer's own sign-off. Nothing is ticked on the strength of the design alone.
 
 - [x] Backend connects to Binance via the combined stream (depth + ticker), built from the resolved pair list — _live run: 8 pairs streaming, 492 Binance messages received in the first seconds_
 - [x] The five required pairs are always included, regardless of pair-resolution outcome — _unit-tested; also seen live_
@@ -80,7 +80,7 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 - [x] Price and percentage formatting uses `Intl.NumberFormat` respecting the active locale, not a hardcoded formatting convention — _`formatPrice`/`formatPercent` tests, cached formatter instances_
 - [x] The full Husky pipeline (pre-commit, commit-msg, pre-push) is installed and functioning identically in both repositories — _identical in both repos as of v9.1 (mobile pre-push previously skipped the tests)_
 - [x] Dependency direction matches the stated architecture in both repositories — spot-check that nothing in the backend's `domain/` imports from `infrastructure/` or `data/`, and that no mobile feature reaches into another feature's internals rather than its barrel export — _grep-checked in v9.1; two backend violations found and fixed; one disclosed narrow exception in mobile (ADR-M8)_
-- [x] Unit and integration tests are present and passing, including pair-resolver and pressure-calculator coverage — _backend 51/51 (13 files), mobile 71/71 (14 suites)_
+- [x] Unit and integration tests are present and passing, including pair-resolver and pressure-calculator coverage — _backend 54/54 (13 files), mobile 71/71 (14 suites)_
 - [ ] Implemented screens match the Figma mockup referenced at the top of this document — including the "Terminal" and "Telemetry & Settings" screens and account drawer, built at full fidelity per ADR-M10, and the freshly-designed "Markets" screen visually consistent with `design-tokens.md` — _needs the developer's own sign-off; emulator screenshots look consistent_
 - [ ] Every screen draws colors/type/spacing from `core/theme/` (sourced from `specs/design-tokens.md`), not a hardcoded literal — including the Markets screen, which has no Figma frame to check against — _not audited exhaustively; a few literal values exist (e.g. shadow colors, one `rgba` border)_
 - [x] Telemetry & Settings' non-backed controls (throttling slider/toggles) and the account drawer's account-management links are documented in the README as intentionally display-only (ADR-M10) — not left for a reviewer to discover unexplained — _mobile README documents this_
@@ -99,7 +99,8 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 ---
 
 - [x] REST failures are normalized to one `AppError` model, retried only when retryable (max 3, exponential backoff with jitter, shared with the WebSocket reconnect arithmetic), and surfaced as localized messages — _ADR-M12; unit-tested through a real `QueryClient` and exercised on the Android Emulator against a fake backend (503×3 → recovers; persistent 503 → stops after 4 attempts; 404 → 1 attempt)_
-- [ ] `release/v1.0.0` cut from `develop`, merged into `main` with a `v1.0.0` tag, and merged back into `develop` — _partly done: `release/v1.0.0` is cut in both repositories and matches `develop`; the merge into `main`, the `v1.0.0` tag and the back-merge are still to do — `main` is still the empty initial commit, and `develop` is the default branch so reviewers see the code (ADR-X2)_
+- [x] `release/v1.0.0` cut from `develop`, merged into `main` with a `v1.0.0` tag, and merged back into `develop` — _done in both repositories: `release/v1.0.0` matched `develop`, was merged into `main` (merge commit), tagged `v1.0.0`, and `main` was merged back into `develop` (ADR-X2)_
+- [x] A shareable release build exists and was tested on a physical Android phone against the hosted backend — _EAS `preview` profile (`pnpm` project, release APK for arm64-v8a only, about a third of the all-ABI size) pointing at the AWS-hosted backend over `https://`/`wss://`; the release bundle needed `react-native-worklets` and `babel-preset-expo` as direct dependencies under pnpm's strict layout (v9.5). The backend runs on a t3.micro EC2 instance behind Caddy with a DuckDNS hostname (`pulsecrypto-backend/docs/deployment-aws-ec2.md`); it is stopped when not in use_
 - [ ] Run the manual gates before submitting: `pnpm audit --prod` (backend clean; mobile 1 moderate transitive `uuid` advisory via Expo config plugins), `pnpm run check:contracts` (mobile)
 
 ---

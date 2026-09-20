@@ -1,10 +1,11 @@
 # PulseCrypto — Backend
 
+> **Reviewing this submission? Start with [DELIVERABLES.md](./DELIVERABLES.md)** — every assignment requirement mapped to a short description and its location in the code, the ADRs, the screen recordings and the installable APK.
+
 A Node.js/Fastify/`ws` gateway that ingests live Binance market streams for multiple trading
 pairs, conflates them into a bounded-memory snapshot, and broadcasts processed updates to the
 PulseCrypto mobile app over a local WebSocket server, alongside a REST metadata endpoint.
 
-Built for the Staff Engineer / Architect (Mobile Apps) practical assignment at Amused Group.
 The companion mobile client lives in a separate repository, [`pulsecrypto-mobile`](../pulsecrypto-mobile).
 
 ---
@@ -45,7 +46,7 @@ in [`docs/adr/04-tech-stack.md`](./docs/adr/04-tech-stack.md). `.env` is gitigno
 pnpm run dev          # tsx watch — hot-reloads on change
 pnpm start             # pnpm run build:ts && node dist/server.js — compiled, production-style run
 pnpm run build:ts      # compile only (tsc, outputs to dist/)
-pnpm test              # Vitest — 13 files, 51 tests: unit + integration (real Fastify app and `ws` client)
+pnpm test              # Vitest — 13 files, 54 tests: unit + integration (real Fastify app and `ws` client)
 pnpm run typecheck      # tsc --noEmit
 pnpm run lint           # ESLint
 pnpm audit --prod       # dependency check (currently reports no known vulnerabilities)
@@ -90,12 +91,15 @@ describes running the Docker image on a small AWS EC2 instance (boot script in
 Things worth knowing before you do:
 
 - **Outbound data is the cost driver.** Each connected client receives about **126 KB/s** (roughly
-  0.46 GB an hour), so keep the port closed to everyone but you and stop the instance when idle.
-- **A hosted copy is private.** The instance used for this submission only accepts connections from
-  the owner's IP address, and it stops itself after six hours. If you want to try the mobile app
-  against it, ask the repository owner (see the mobile README, _Configuration and access_).
+  0.46 GB an hour), so cap connections (`MAX_CONNECTIONS_PER_IP`, `MAX_TOTAL_CONNECTIONS`), keep the
+  firewall as tight as your use allows, and stop the instance when idle.
+- **A hosted copy is not always on.** The instance used for this submission runs behind Caddy with a
+  free DuckDNS hostname (`https://pulsecrypto.duckdns.org`, `wss://pulsecrypto.duckdns.org`), accepts at
+  most 10 concurrent clients, is stopped when not in use, and stops itself six hours after boot. To try
+  the mobile app against it, ask the repository owner to start it, or run the backend locally (see the
+  mobile README, _Configuration and access_).
 - **Plain `http`/`ws` by default** — fine for the emulator and development builds. A release build needs
-  TLS; the guide includes an optional Caddy + free DuckDNS setup for that.
+  TLS; the guide includes the Caddy + free DuckDNS setup that the hosted copy uses.
 
 ---
 

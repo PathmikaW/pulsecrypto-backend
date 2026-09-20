@@ -23,7 +23,7 @@
 2. **Structure and maintainability:**
    - Plugin architecture keeps the codebase modular without requiring a heavier DI container to get there.
    - Native TypeScript support throughout, with first-class typing for routes, schemas, and plugins.
-3. **Fit for the role's stated priorities:**
+3. **Fit for the system's priorities:**
    - Consistent with an emphasis on highly performant, scalable backend services and low-latency APIs — the framework choice is one of several decisions in this document made with that operating context in mind, not an isolated preference.
 
 **Trade-offs accepted.**
@@ -375,7 +375,7 @@ _(v9.1 correction: earlier drafts of this tree listed `api/schemas/` and an inte
 3. **Maintainability:** the Binance adapter, or even the pair-resolution strategy, can change without touching broadcast logic.
 4. **Testability:** domain and application logic can be tested with ports mocked, independent of any real network call; adapters are tested separately against a mock Binance server.
 5. **Extensibility:** adding a second exchange means writing a new adapter implementing `MarketDataSource`, not modifying the domain.
-6. **This is more structure than a three-route service strictly needs on its own — stated honestly.** The layering here is a deliberate answer to the role's explicit emphasis on SOLID, GRASP, and Clean/Hexagonal Architecture, not something a service this size would necessarily converge on by default. Complexity adopted because the evaluation criteria specifically call for it is a different thing than complexity added without a reason — see ADR-X1 and ADR-M6 for the reverse case, where similar-looking structure was removed after review.
+6. **This is more structure than a three-route service strictly needs on its own — stated honestly.** The layering here is a deliberate application of SOLID, GRASP, and Clean/Hexagonal Architecture, not something a service this size would necessarily converge on by default. Complexity adopted because the evaluation criteria specifically call for it is a different thing than complexity added without a reason — see ADR-X1 and ADR-M6 for the reverse case, where similar-looking structure was removed after review.
 
 **Trade-offs accepted.** More files and folders than a simple MVC layout, and it requires discipline to keep the layers separate — mitigated by the dependency rule above being explicit enough to check mechanically. As of v9.1 it is verified by a grep-based spot check (no import from `infrastructure/` in `domain/`, `application/` or `api/`), not by an ESLint import-restriction rule — adding such a rule remains an open improvement.
 
@@ -403,7 +403,7 @@ _(v9.1 correction: earlier drafts of this tree listed `api/schemas/` and an inte
 **Rationale.**
 
 1. Logs explain what happened after the fact; metrics are what gets watched in real time — the two are complementary, not substitutes for each other.
-2. Both are inexpensive to add relative to the operational signal they provide, and directly support the observability expectations described in the role.
+2. Both are inexpensive to add relative to the operational signal they provide, and directly support the observability expected of a production service.
 3. The `supported_pairs_count` gauge specifically turns the dynamic pair-resolution decision (ADR-B3) into something operable in production, not just visible in a startup log line — an on-call engineer can confirm at a glance whether the fallback path was taken without searching logs.
 
 **Trade-offs accepted.** Marginally more code than ad hoc `console.log` statements, and requires familiarity with the Prometheus exposition format — a standard, widely adopted trade for the operational value gained.
