@@ -1,0 +1,13 @@
+# No top-level `version:` key - deprecated in the current Compose spec (ADR-X4).
+services:
+  backend:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - BROADCAST_INTERVAL_MS=100
+      - EXTRA_PAIRS_COUNT=3
+      - PAIR_RESOLUTION_TIMEOUT_MS=5000
+      - ORDER_BOOK_PRESSURE_DEPTH=10
+    restart: unless-stopped

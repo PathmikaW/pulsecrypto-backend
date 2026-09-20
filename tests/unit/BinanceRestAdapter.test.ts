@@ -1,0 +1,48 @@
+import { describe, it, expect, vi } from 'vitest';
+import { BinanceRestAdapter } from '../../src/infrastructure/binance/BinanceRestAdapter.js';
+import { toDisplayName } from '../../src/domain/models/PairMeta.js';
+import type { FetchJsonFn } from '../../src/infrastructure/binance/BinancePairResolver.js';
+import { MARKET_CAP_PLACEHOLDER } from '../../src/domain/models/PairMeta.js';
+
+describe('toDisplayName', () => {
+  it('formats a USDT-quoted symbol as BASE/USDT', () => {
+    expect(toDisplayName('BTCUSDT')).toBe('BTC/USDT');
+    expect(toDisplayName('DOGEUSDT')).toBe('DOGE/USDT');
+  });
+});
+
+describe('BinanceRestAdapter.getPairsMeta', () => {
+  it('maps ticker fields to PairMeta, filtered to the requested pairs only', async () => {
+    const mockFetch: FetchJsonFn = vi.fn(async () => [
+      { symbol: 'BTCUSDT', highPrice: '65000.00', lowPrice: '64000.00', quoteVolume: '123456.78' },
+      { symbol: 'ETHUSDT', highPrice: '3500.00', lowPrice: '3400.00', quoteVolume: '98765.43' },
+      { symbol: 'NOTRACKEDUSDT', highPrice: '1', lowPrice: '1', quoteVolume: '1' },
+    ]);
+
+    const adapter = new BinanceRestAdapter(mockFetch);
+    const result = await adapter.getPairsMeta(['BTCUSDT', 'ETHUSDT']);
+
+    expect(result).toHaveLength(2);
+    expect(result.map((p) => p.symbol)).toEqual(['BTCUSDT', 'ETHUSDT']);
+    expect(result[0]).toEqual({
+      symbol: 'BTCUSDT',
+      displayName: 'BTC/USDT',
+      tradingStatus: 'TRADING',
+      high24h: 65000,
+      low24h: 64000,
+      volume24h: 123456.78,
+      marketCap: MARKET_CAP_PLACEHOLDER,
+    });
+  });
+
+  it('aborts the request and rejects when Binance does not answer within the timeout', async () => {
+    const hangingFetch: FetchJsonFn = (_url, signal) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')));
+      });
+
+    const adapter = new BinanceRestAdapter(hangingFetch, 'https://example.test', 20);
+
+    await expect(adapter.getPairsMeta(['BTCUSDT'])).rejects.toThrow('aborted');
+  });
+});
