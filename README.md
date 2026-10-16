@@ -121,9 +121,9 @@ Things worth knowing before you do:
    bounds memory structurally: the map's size is the resolved pair count, a small fixed
    number, regardless of upstream message rate or client count.
 4. **Protects against slow consumers** by checking `ws.bufferedAmount` before every write; a
-   client over `MAX_BUFFERED_BYTES` is skipped for that tick (not queued — the next tick
-   supersedes it), and a client skipped `MAX_CONSECUTIVE_SKIPS` times in a row is disconnected
-   with close code `1013`. No per-client message history is ever retained.
+   message to a client over `MAX_BUFFERED_BYTES` is skipped (not queued — the next tick
+   supersedes it), and a client with `MAX_CONSECUTIVE_SKIPS` skipped messages in a row is
+   disconnected with close code `1013`. No per-client message history is ever retained.
 5. **Serves `GET /pairs/meta`** with real data from Binance's `ticker/24hr`, filtered to the
    resolved pairs and cached 60 seconds — falling back to mock data for the required five only
    if Binance is unreachable.

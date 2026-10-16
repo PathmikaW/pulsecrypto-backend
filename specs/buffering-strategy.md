@@ -33,26 +33,34 @@ queued.
 
 ## Backpressure (the single mechanism — do not add a second one)
 
-For each connected client, on each tick, before writing:
+Each tick broadcasts one message per resolved pair. For each connected client, before writing each
+of those messages:
 
 ```typescript
 if (client.ws.bufferedAmount > MAX_BUFFERED_BYTES) {
   client.consecutiveSkips += 1;
   if (client.consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
     client.ws.close(1013, 'Try again later');
-    metrics.wsMessagesDropped.inc(); // eviction counts as a drop too
     registry.remove(client);
   }
-  metrics.wsMessagesDropped.inc();
-  return; // skip this client for this tick — no queuing, no retry of the skipped message
+  metrics.wsMessagesDropped.inc(); // eviction counts as a drop too
+  continue; // skip this message for this client — no queuing, no retry of the skipped message
 }
 client.consecutiveSkips = 0;
 client.ws.send(payload);
 metrics.wsMessagesBroadcast.inc();
 ```
 
-`MAX_BUFFERED_BYTES` default `65536` (64KB). `MAX_CONSECUTIVE_SKIPS` default `10` (~1s at
-the default 100ms interval).
+`MAX_BUFFERED_BYTES` default `65536` (64KB). `MAX_CONSECUTIVE_SKIPS` default `10`.
+
+`bufferedAmount` is the `ws` library's count of bytes accepted by `send()` but not yet handed to
+the kernel (Node's socket write queue plus the `ws` sender buffer). It only grows once the OS's
+TCP send buffer is full, so a high value means the process heap is absorbing a slow client's
+backlog.
+
+`consecutiveSkips` counts skipped **messages**, not ticks, and any successful send resets it.
+With the default eight pairs, a client whose buffer stays full is evicted during the second
+consecutive tick (~100–200ms), not after ~1s (ADR-B4, v9.6 correction).
 
 **Do not implement:**
 

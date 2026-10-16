@@ -37,7 +37,8 @@ example payload shape directly (one object, one `pair` field).
 broadcast cadence itself (ADR-M6, ADR §12.5). Do not implement a ping/pong exchange here.
 
 **Disconnection.** Server-initiated disconnect uses close code `1013` ("Try again later"),
-sent only when a client has been skipped for `MAX_CONSECUTIVE_SKIPS` consecutive ticks
+sent only when `MAX_CONSECUTIVE_SKIPS` consecutive messages to a client have been skipped (one
+message per pair per tick)
 (ADR-B4).
 
 ## REST — Fastify, `http://<host>:3000`
