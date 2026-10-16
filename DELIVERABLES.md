@@ -129,7 +129,7 @@ Also stated openly in each README: **Known limitations**
 The AI workflow itself is recorded in the repositories: [`CLAUDE.md`](https://github.com/PathmikaW/pulsecrypto-mobile/blob/main/CLAUDE.md)
 (standing instructions, in both repos), the spec-driven `specs/` folders, and ADR-X5 and ADR-X6 above.
 
-**Source code in Git:** both repositories are linked at the top of this page. `main` holds the tagged `v1.0.0` release;
+**Source code in Git:** both repositories are linked at the top of this page. `main` holds the tagged `v1.0.1` release;
 `develop` is the integration branch (Gitflow, ADR-X2).
 
 ---
@@ -213,4 +213,4 @@ Extras that were built, each documented and labelled as optional:
 
 ---
 
-_This file is kept identical in both repositories. The links point at the `main` branch (the released `v1.0.0` code)._
+_This file is kept identical in both repositories. The links point at the `main` branch (the released `v1.0.1` code)._
