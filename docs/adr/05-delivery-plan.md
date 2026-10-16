@@ -45,7 +45,7 @@
 - `watchlist` feature (the "Markets" screen): screen, FlashList row rendering, search/filter — no Figma frame exists for this one; built fresh from `design-tokens.md`
 - `favourites` feature: toggle, persistence, public `useFavourites()` hook, untracked-favourite handling in `watchlist`
 - `market-details` feature (the "Terminal" screen): price ticker, order book, market depth panel — built to Figma's "Trading Terminal" frame at full fidelity, with buy/sell pressure, spread, and **last updated timestamp** added on top per ADR-M10 since Figma doesn't show them
-- `telemetry-settings` feature (the "Telemetry & Settings" screen) + the account drawer: built to Figma at full fidelity — not an assignment requirement, built per the explicit ADR-M10 decision; real data wired where cheap (WS msg rate, JS FPS), everything else clearly documented as display-only
+- `telemetry-settings` feature (the "Telemetry & Settings" screen) + the account drawer: built to Figma at full fidelity — not a functional requirement, built per the explicit ADR-M10 decision; real data wired where cheap (WS msg rate, JS FPS), everything else clearly documented as display-only
 - Price-flash and order-book animations
 - All user-facing strings routed through `react-i18next`, not hardcoded inline — enforced from this phase onward, not retrofitted later
 
@@ -58,7 +58,7 @@
 - Backgrounding / network-switching edge cases
 - Incoming WS message validation against the mirrored contract schema, and the top-level error boundary (ADR-M6, v8.1)
 - Performance profiling, including a measured FlashList-vs-FlatList comparison for the README
-- **Build and run on the Android Emulator via `npx expo run:android`, and confirm it end-to-end** — the assignment's required target platform; this should happen well before Phase 7's screen recording, not for the first time during it
+- **Build and run on the Android Emulator via `npx expo run:android`, and confirm it end-to-end** — the project's required target platform; this should happen well before Phase 7's screen recording, not for the first time during it
 
 ### Phase 6 — Testing & Polish
 

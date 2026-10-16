@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculatePressureAndSpread } from '../../src/domain/services/PressureCalculator.js';
 import type { OrderBookLevel } from '../../src/domain/models/OrderBook.js';
 
-// Fixture from specs/pressure-spread-formula.md — hand-verifiable by a reviewer.
+// Fixture from specs/pressure-spread-formula.md — verifiable by hand.
 const bids: OrderBookLevel[] = [
   { price: 109235.42, quantity: 20 },
   { price: 109234.0, quantity: 25.2 },

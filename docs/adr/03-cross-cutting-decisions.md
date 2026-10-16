@@ -6,12 +6,12 @@
 
 **Options considered:**
 
-| Option                                                                                                                                                                     | Pros                                                                                                                                                                     | Cons                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Monorepo                                                                                                                                                                   | Shared types, single CI pipeline                                                                                                                                         | Setup complexity disproportionate to this project's scope, and doesn't match the assignment's own framing of two separate deliverables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Two repos, contract duplicated, no automated check                                                                                                                         | Simplest possible setup                                                                                                                                                  | Pure manual discipline — a real drift risk, not just a theoretical one                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Two repos + a published shared package (`@pulsecrypto/contracts`, via GitHub Packages)                                                                                     | Contract-first; drift caught by CI rather than by hoping someone remembers                                                                                               | **Rejected on review.** GitHub's own documentation states plainly that an access token is required to install a package via GitHub Packages — public or private, no exception. A reviewer cloning the mobile repository and running `npm install` would fail unless they had their own personal access token configured, which risks breaking the single most basic requirement of a submission: that it installs and runs. This is a worse failure mode than the drift risk it was meant to solve, and a third repository/package to publish and version is disproportionate overhead for one developer building both consuming sides. |
-| **Two repos; `contracts/` owned by the backend, mirrored into the mobile repo, drift caught by a CI step that diffs the mobile copy against the backend's raw GitHub URL** | Gets the meaningful protection — drift becomes a build failure, not a hope — with zero registry, zero publish step, and zero authentication anywhere in the install path | The mobile copy is a mirror, not a live import — a deliberate, disclosed trade, not an oversight                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Option                                                                                                                                                                     | Pros                                                                                                                                                                     | Cons                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Monorepo                                                                                                                                                                   | Shared types, single CI pipeline                                                                                                                                         | Setup complexity disproportionate to this project's scope, and doesn't match the project's own framing of two separate deliverables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Two repos, contract duplicated, no automated check                                                                                                                         | Simplest possible setup                                                                                                                                                  | Pure manual discipline — a real drift risk, not just a theoretical one                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Two repos + a published shared package (`@pulsecrypto/contracts`, via GitHub Packages)                                                                                     | Contract-first; drift caught by CI rather than by hoping someone remembers                                                                                               | **Rejected on review.** GitHub's own documentation states plainly that an access token is required to install a package via GitHub Packages — public or private, no exception. Anyone cloning the mobile repository and running `npm install` would fail unless they had their own personal access token configured, which risks breaking the single most basic requirement of a public repository: that it installs and runs. This is a worse failure mode than the drift risk it was meant to solve, and a third repository/package to publish and version is disproportionate overhead for one developer building both consuming sides. |
+| **Two repos; `contracts/` owned by the backend, mirrored into the mobile repo, drift caught by a CI step that diffs the mobile copy against the backend's raw GitHub URL** | Gets the meaningful protection — drift becomes a build failure, not a hope — with zero registry, zero publish step, and zero authentication anywhere in the install path | The mobile copy is a mirror, not a live import — a deliberate, disclosed trade, not an oversight                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 **Decision.** Two repositories only — `pulsecrypto-backend` and `pulsecrypto-mobile`. No third repository, no package registry.
 
@@ -33,7 +33,7 @@
 **Rationale.**
 
 1. Two independently-deployable services sharing a wire contract with zero drift detection is a real risk even for a solo project — a schema change made while iterating on one repository and not yet carried over to the other is exactly the kind of thing that's easy to lose track of mid-implementation, particularly when using an AI coding tool that's iterating quickly on one repository at a time.
-2. A published package solves that same problem but introduces a strictly worse one: GitHub Packages' authentication requirement risks breaking installation for the person reviewing the submission, which is a more serious failure than the drift risk it replaces.
+2. A published package solves that same problem but introduces a strictly worse one: GitHub Packages' authentication requirement risks breaking installation for anyone who clones the repository, which is a more serious failure than the drift risk it replaces.
 3. The raw-URL diff check keeps the part of the original design that had genuine value — automated, CI-enforced, not manual discipline — while removing every piece that could fail for a reason unrelated to the code's own correctness.
 4. This is proportionate to a single developer building both repositories closely together: the coordination failure a shared package protects against — different teams, different deploy cadences, someone forgets — barely has room to occur in that context, so paying its full operational cost (and risk) isn't justified here.
 
@@ -78,7 +78,7 @@ main (production-only, protected, tagged releases — receives merges only from 
   `release/*` or `hotfix/*` branch, so its history reads as a sequence of releases, not
   day-to-day development noise.
 
-**Status (v9.5).** Gitflow was completed end to end in both repositories. All work flowed `feature/*` / `fix/*` → `develop` through pull requests, and `develop` is the GitHub default branch, so a reviewer who clones either repo sees the real code. `release/v1.0.0` was cut from `develop` in both repositories and kept identical to it (release fixes — the backend Dockerfile, then the mobile release-build dependencies and three UI alignment fixes — went `fix/*` → `develop`, and the release branch was fast-forwarded to match). `release/v1.0.0` was then merged into `main` with a merge commit (not a squash, so `develop` stays a descendant of `main`), `v1.0.0` was tagged on `main`, and `main` was merged back into `develop`. `fix/*` is used for bug-fix branches alongside `feature/*`; both are cut from `develop` and merged by pull request. The three-stage Husky pipeline is identical in both repositories — before v9.1 the mobile `pre-push` hook ran only `tsc --noEmit` (a stale TODO said to add the tests once they existed).
+**Status (v9.5).** Gitflow was completed end to end in both repositories. All work flowed `feature/*` / `fix/*` → `develop` through pull requests, and `develop` is the GitHub default branch, so anyone who clones either repo sees the real code. `release/v1.0.0` was cut from `develop` in both repositories and kept identical to it (release fixes — the backend Dockerfile, then the mobile release-build dependencies and three UI alignment fixes — went `fix/*` → `develop`, and the release branch was fast-forwarded to match). `release/v1.0.0` was then merged into `main` with a merge commit (not a squash, so `develop` stays a descendant of `main`), `v1.0.0` was tagged on `main`, and `main` was merged back into `develop`. `fix/*` is used for bug-fix branches alongside `feature/*`; both are cut from `develop` and merged by pull request. The three-stage Husky pipeline is identical in both repositories — before v9.1 the mobile `pre-push` hook ran only `tsc --noEmit` (a stale TODO said to add the tests once they existed).
 
 **Conventional Commits, examples:**
 
@@ -118,8 +118,8 @@ perf(mobile): optimize Zustand selectors for pair-level updates
 1. Gitflow gives an explicit, inspectable separation between "in-progress integration"
    (`develop`) and "what's actually released" (`main`), plus a defined path for stabilizing
    a release (`release/*`) and patching one after the fact (`hotfix/*`). Even for a
-   single-developer submission, this makes the branch history itself demonstrate release
-   discipline — a reviewer can see the model in the commit graph, not just read a claim
+   single-developer project, this makes the branch history itself demonstrate release
+   discipline — a reader can see the model in the commit graph, not just read a claim
    about it in the README.
 2. **This revises this ADR's own earlier position (see §13 Document History), stated
    honestly rather than silently overwritten.** The prior decision (GitHub Flow) argued
@@ -127,11 +127,11 @@ perf(mobile): optimize Zustand selectors for pair-level updates
    for `develop`/`release`/`hotfix` branches, and that argument was not wrong on its own
    terms — Gitflow is genuinely more branch-management overhead than this project's actual
    release cadence requires. The decision to adopt it anyway is made deliberately: the
-   assignment is evaluated partly on demonstrated engineering process, and a fully worked
-   Gitflow history is itself a legible artifact of that process for a reviewer, which is a
-   real benefit specific to this being an evaluated exercise rather than a genuine
-   production solo project — the same kind of context-specific trade this document makes
-   elsewhere (see ADR-B7 and ADR-M9 for cases where the evaluation context, not the
+   project exists partly to practise and show a complete engineering process in public,
+   and a fully worked Gitflow history is itself a legible artifact of that process, which
+   is a real benefit specific to this being a showcase project rather than a solo
+   production service — the same kind of context-specific trade this document makes
+   elsewhere (see ADR-B7 and ADR-M9 for cases where the project's goals, not the
    project's size alone, justified more structure than a minimal build would choose).
 3. Conventional Commits produce a readable, structured history and enable automated changelog generation, at minimal ongoing cost once the lint hooks are in place.
 4. Splitting the pipeline into three stages — fast/scoped at commit time, format-only at commit-message time, slow/exhaustive at push time — matches each check's cost to the point in the workflow where it's cheapest to enforce: nobody waits for a full test suite on every keystroke-adjacent commit, but nothing reaches a shared branch without having passed one.
@@ -239,7 +239,7 @@ _(No top-level `version:` key — deprecated in the current Compose spec; modern
 
 1. A non-root user and a minimal base image are standard container-security practice.
 2. A multi-stage build keeps sources and the compile step out of the runtime image (see the v9.1 status note above on devDependencies).
-3. This is also the natural on-ramp to a typical AWS/Kubernetes deployment path, without building infrastructure beyond what this exercise can meaningfully demonstrate. Unlike the contracts-package decision above, adopting Docker here doesn't introduce any install-time risk for a reviewer — `pnpm dev` still works standalone, with or without Docker — so there was no corresponding reason to simplify it away.
+3. This is also the natural on-ramp to a typical AWS/Kubernetes deployment path, without building infrastructure beyond what this project can meaningfully demonstrate. Unlike the contracts-package decision above, adopting Docker here doesn't introduce any install-time risk for anyone cloning the repo — `pnpm dev` still works standalone, with or without Docker — so there was no corresponding reason to simplify it away.
 
 **Trade-offs accepted.** One additional file to maintain, in exchange for a portable, reproducible runtime.
 
@@ -248,8 +248,8 @@ _(No top-level `version:` key — deprecated in the current Compose spec; modern
 ### ADR-X5: Framework Scaffolding & the Human/AI Division of Labor
 
 **Context.** This project is built with AI-assisted development throughout (§7), which
-raises a specific question the assignment itself flags as something it's evaluating —
-"how effectively you leverage AI" — namely: which parts of the work should an AI coding
+raises a specific question this project sets out to answer well — how effectively AI is
+leveraged — namely: which parts of the work should an AI coding
 session do directly, and which parts should the developer do themselves and hand off a
 verified result? Framework scaffolding (generating the initial Fastify project, generating
 the initial Expo project, running `expo prebuild` to produce the native `android/`/`ios/`
@@ -359,8 +359,8 @@ should stop and say so, rather than generate scaffold files itself to "get start
    implementation usually does; it tends to surface later as an unrelated-looking build
    error. Requiring a human-run, human-verified scaffold removes this specific failure mode
    entirely rather than mitigating it.
-3. **Directly answers the assignment's own evaluation criterion** — "how effectively you
-   leverage AI" is demonstrated as much by knowing where _not_ to delegate to AI as by using
+3. **Directly serves one of the project's own goals** — how effectively AI is
+   leveraged is demonstrated as much by knowing where _not_ to delegate to AI as by using
    it well everywhere else; this is the same judgment already exercised elsewhere in this
    document (see the Executive Summary's "complexity is added deliberately, in both
    directions" principle) applied to the human/AI boundary specifically, rather than only to
@@ -426,7 +426,7 @@ instance, conversation, or point in this project's timeline is running:
    "verify the actual state, don't trust the log of what you intended to do" — applied
    specifically to the failure mode AI coding sessions are most prone to:** a fluent,
    confident narration of success that was never checked against the real, resulting
-   system state. The assignment's emphasis on how AI-assisted development is used
+   system state. The project's emphasis on how AI-assisted development is used
    (Executive Summary) makes this a direct quality bar, not an abstract concern.
 3. **Stated as an ADR, not only as CLAUDE.md guidance, because it is exactly as real and
    binding a process decision as ADR-X2 (Gitflow) or ADR-X5 (manual scaffolding) — the
@@ -484,11 +484,11 @@ reported success.
 3. **A single-file version was not kept in parallel as a "human-readable" copy**, since two
    representations of the same content is exactly the drift risk this project's own mirror
    discipline (this file, the ADR-X1 contracts approach) exists to eliminate. `00-overview.md`
-   is the front door for a human reviewer too — its Table of Contents links directly into
+   is the front door for a human reader too — its Table of Contents links directly into
    each topic file, so nothing about reviewability was traded away, only the requirement to
    load all of it just to read a piece of it.
 
-**Trade-offs accepted.** Ten files instead of one — a reviewer or session wanting the
+**Trade-offs accepted.** Ten files instead of one — a reader or session wanting the
 complete picture now clicks through an index rather than scrolling one document, and any
 future edit needs to land in the correct topic file rather than "somewhere in the ADR." Both
 are minor costs against the token savings for the much more common case (a session working

@@ -1,6 +1,6 @@
 # PulseCrypto — Backend
 
-> **Reviewing this submission? Start with [DELIVERABLES.md](./DELIVERABLES.md)** — every assignment requirement mapped to a short description and its location in the code, the ADRs, the screen recordings and the installable APK.
+> **New here? Start with [DELIVERABLES.md](./DELIVERABLES.md)** — every project requirement mapped to a short description and its location in the code, the ADRs, the screen recordings and the installable APK.
 
 A Node.js/Fastify/`ws` gateway that ingests live Binance market streams for multiple trading
 pairs, conflates them into a bounded-memory snapshot, and broadcasts processed updates to the
@@ -14,7 +14,7 @@ The companion mobile client lives in a separate repository, [`pulsecrypto-mobile
 
 **Prerequisites**
 
-- Node.js 24.x (Active LTS) — enable pnpm via Corepack: `corepack enable`. (Development and testing for this submission ran on Node 25.8.1; 24.x is the documented target and the Docker base image.)
+- Node.js 24.x (Active LTS) — enable pnpm via Corepack: `corepack enable`. (Development and testing for this release ran on Node 25.8.1; 24.x is the documented target and the Docker base image.)
 - pnpm (see above)
 - Docker, optional, for the containerized run path
 
@@ -93,7 +93,7 @@ Things worth knowing before you do:
 - **Outbound data is the cost driver.** Each connected client receives about **126 KB/s** (roughly
   0.46 GB an hour), so cap connections (`MAX_CONNECTIONS_PER_IP`, `MAX_TOTAL_CONNECTIONS`), keep the
   firewall as tight as your use allows, and stop the instance when idle.
-- **A hosted copy is not always on.** The instance used for this submission runs behind Caddy with a
+- **A hosted copy is not always on.** The instance used for this project runs behind Caddy with a
   free DuckDNS hostname (`https://pulsecrypto.duckdns.org`, `wss://pulsecrypto.duckdns.org`), accepts at
   most 10 concurrent clients, is stopped when not in use, and stops itself six hours after boot. To try
   the mobile app against it, ask the repository owner to start it, or run the backend locally (see the
@@ -121,9 +121,9 @@ Things worth knowing before you do:
    bounds memory structurally: the map's size is the resolved pair count, a small fixed
    number, regardless of upstream message rate or client count.
 4. **Protects against slow consumers** by checking `ws.bufferedAmount` before every write; a
-   client over `MAX_BUFFERED_BYTES` is skipped for that tick (not queued — the next tick
-   supersedes it), and a client skipped `MAX_CONSECUTIVE_SKIPS` times in a row is disconnected
-   with close code `1013`. No per-client message history is ever retained.
+   message to a client over `MAX_BUFFERED_BYTES` is skipped (not queued — the next tick
+   supersedes it), and a client with `MAX_CONSECUTIVE_SKIPS` skipped messages in a row is
+   disconnected with close code `1013`. No per-client message history is ever retained.
 5. **Serves `GET /pairs/meta`** with real data from Binance's `ticker/24hr`, filtered to the
    resolved pairs and cached 60 seconds — falling back to mock data for the required five only
    if Binance is unreachable.
@@ -225,7 +225,7 @@ summary.
 | `/pairs/meta`             | **Real Binance data**, scoped mock fallback                                                | A metadata endpoint returning fixtures under normal operation misrepresents how the system actually behaves; the fallback is honestly scoped to the mandatory five |
 | Project structure         | **Hexagonal (ports & adapters)**, dependency direction enforced                            | `domain/` has zero external dependencies; adapters implement ports, never the reverse — checkable, not just a naming convention                                    |
 | Observability             | **pino + `@prometheus-io/client`** (the maintained successor to `prom-client`)             | Structured logs explain what happened; metrics are what gets watched in real time — complementary, not substitutes                                                 |
-| Security                  | **Defense in depth** (rate limiting, origin checks, non-root container, Zod-validated env) | Applied even to the parts of the system this exercise doesn't deploy — a posture that only exists for what's reviewed isn't a real posture                         |
+| Security                  | **Defense in depth** (rate limiting, origin checks, non-root container, Zod-validated env) | Applied even to the parts of the system this project doesn't deploy — a posture that only exists for what's reviewed isn't a real posture                          |
 
 **Buy/Sell Pressure & Spread formulas** (`domain/services/PressureCalculator.ts`):
 
@@ -246,7 +246,7 @@ depth requested from Binance — the two can be retuned independently.
   no API key is required for the public market-data endpoints used here.
 - The mobile app and this backend share a network during local development (the mobile client
   connects to a `localhost`/LAN address, not a deployed URL).
-- The five required pairs satisfy the assignment's mandatory scope; additional pairs are a
+- The five required pairs satisfy the project's mandatory scope; additional pairs are a
   genuine bonus, not something the grading depends on.
 - A production deployment would sit behind a TLS-terminating load balancer (`wss://`); local
   development intentionally runs plaintext `ws://`.
@@ -261,8 +261,8 @@ depth requested from Binance — the two can be retuned independently.
 - **Dynamic pair resolution over a hardcoded list** — always reflects real, current liquidity,
   at the cost of a startup dependency on two extra Binance REST calls (mitigated by the
   required-pairs fallback). If time were constrained, this is the one feature that could most
-  safely be scoped back to "required five only" without weakening anything the assignment
-  actually tests.
+  safely be scoped back to "required five only" without weakening anything the project
+  actually requires.
 - **Single backpressure mechanism over layered safeguards** — a bounded per-client queue plus
   a separate lag-timeout was considered and rejected: the latest-state conflation model already
   guarantees at most one pending message per pair per client, so a second independent
@@ -270,7 +270,7 @@ depth requested from Binance — the two can be retuned independently.
 - **No WebSocket heartbeat** — the 100ms broadcast cadence is itself a liveness signal; a
   separate ping/pong protocol would answer a question the data stream already answers.
 - **Hexagonal architecture with explicit ports** — more structure than a three-route service
-  strictly needs on its own, adopted deliberately because the assignment's evaluation criteria
+  strictly needs on its own, adopted deliberately because the project's goals
   explicitly call for clean architecture and separation of concerns, not because a service this
   size would necessarily converge on it by default.
 
@@ -278,7 +278,7 @@ depth requested from Binance — the two can be retuned independently.
 
 ## Known limitations
 
-Stated plainly rather than left for a reviewer to find:
+Stated plainly rather than left for a reader to find:
 
 - **Pair resolution runs once per process.** If Binance is unreachable at startup, the service
   falls back to the required five and keeps them until it is restarted — there is no background
@@ -299,7 +299,7 @@ Stated plainly rather than left for a reviewer to find:
 This project was built with **Claude Code** end-to-end, using a **spec-driven development**
 workflow: every unit of work was implemented against a written spec in `specs/` (data models,
 API contract, buffering strategy, pair-resolution strategy) rather than directly from memory
-of the assignment brief, with the architecture decisions themselves recorded as a full ADR
+of the requirements, with the architecture decisions themselves recorded as a full ADR
 (`docs/adr/`) before implementation began.
 
 Concretely:

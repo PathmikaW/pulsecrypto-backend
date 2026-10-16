@@ -30,14 +30,15 @@ identical broadcast, for every currently-tracked pair, every tick.
 ```
 
 One message per pair (not one message batching all pairs) — this keeps message size small
-and constant regardless of how many pairs are tracked, and matches the assignment's
+and constant regardless of how many pairs are tracked, and matches the project's
 example payload shape directly (one object, one `pair` field).
 
 **No heartbeat/ping-pong message of any kind.** Liveness is inferred by the client from
 broadcast cadence itself (ADR-M6, ADR §12.5). Do not implement a ping/pong exchange here.
 
 **Disconnection.** Server-initiated disconnect uses close code `1013` ("Try again later"),
-sent only when a client has been skipped for `MAX_CONSECUTIVE_SKIPS` consecutive ticks
+sent only when `MAX_CONSECUTIVE_SKIPS` consecutive messages to a client have been skipped (one
+message per pair per tick)
 (ADR-B4).
 
 ## REST — Fastify, `http://<host>:3000`
