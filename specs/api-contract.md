@@ -30,7 +30,7 @@ identical broadcast, for every currently-tracked pair, every tick.
 ```
 
 One message per pair (not one message batching all pairs) — this keeps message size small
-and constant regardless of how many pairs are tracked, and matches the assignment's
+and constant regardless of how many pairs are tracked, and matches the project's
 example payload shape directly (one object, one `pair` field).
 
 **No heartbeat/ping-pong message of any kind.** Liveness is inferred by the client from

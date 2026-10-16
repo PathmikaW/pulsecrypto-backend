@@ -40,12 +40,11 @@ interface PairState {
 
 ## `MarketUpdate` (the WebSocket broadcast payload — one per pair, per tick)
 
-This is the wire format. Field names and shape match the assignment's example payload,
-plus `lastUpdatedAt` and `change24h` — the assignment explicitly says "the exact payload
-format is up to you but should be documented," and both fields are required elsewhere in
-the assignment brief (§12.2 for `lastUpdatedAt`; the mobile watchlist's required "24 Hour
-Change" row field for `change24h`, Part 2 §1) even though neither appears in the example
-JSON snippet.
+This is the wire format. Field names and shape match the project's example payload,
+plus `lastUpdatedAt` and `change24h` — the exact payload format is ours to define as long
+as it is documented, and both fields are required elsewhere in the requirements (§12.2 for
+`lastUpdatedAt`; the mobile watchlist's required "24 Hour Change" row field for
+`change24h`) even though neither appears in the example JSON snippet.
 
 ```typescript
 interface MarketUpdate {

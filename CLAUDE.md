@@ -63,11 +63,11 @@ for) are normal work and fine to run directly — the boundary is specifically t
 scaffold_, not every subsequent install. See ADR-X5 in the ADR for the full reasoning and
 this same boundary stated for the mobile repo.
 
-## Evaluation context — why "correct-enough" isn't the bar here
+## Quality bar — why "correct-enough" isn't the bar here
 
-This is a practical assignment. The reviewer is
-evaluating the architecture, the specific decisions made and their rationale, and code
-quality — not only whether the app runs. Concretely, this means:
+This project is meant to show engineering quality in public: the architecture, the
+specific decisions made and their rationale, and code quality matter as much as whether
+the app runs. Concretely, this means:
 
 - Follow the stated architecture **literally**, not "in spirit." A dependency-direction
   violation or a reintroduced-and-rejected pattern (e.g. a second backpressure mechanism)
@@ -76,11 +76,11 @@ quality — not only whether the app runs. Concretely, this means:
   Fastify plugin structure, idiomatic Zod schema composition, idiomatic Vitest test
   structure) rather than code that merely works. If you're unsure what's idiomatic for a
   given library, say so rather than guessing.
-- Never take a shortcut that would make the code or the decision look worse under review
+- Never take a shortcut that would make the code or the decision look worse to a reader
   to save time now — flag the tension and ask instead of silently choosing "fast" over
   "correct as specified."
 - Tests and specs are not optional scaffolding to skip when a deadline feels close — the
-  testing strategy itself is part of what's being evaluated.
+  testing strategy itself is part of what this project is meant to show.
 
 ## Authority, in order
 

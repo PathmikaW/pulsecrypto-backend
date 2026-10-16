@@ -1,8 +1,8 @@
 # Running the backend on AWS EC2 (optional)
 
-The backend runs fine on a laptop (`pnpm start`), and that is all a reviewer needs. This guide is for
+The backend runs fine on a laptop (`pnpm start`), and that is all you need to try it. This guide is for
 hosting it on a small cloud VM so a mobile build can reach it without your laptop — for a demo
-or a screen recording. It was used to host the submission on an AWS Free plan account.
+or a screen recording. It was used to host the project on an AWS Free plan account.
 
 This is an operations note, not an architecture decision. It uses only `deploy/aws-ec2-user-data.sh`
 and the repository's `Dockerfile`; nothing in the application depends on AWS.

@@ -1,6 +1,6 @@
 # PulseCrypto — Deliverables & Requirements Map
 
-One page that maps every item in the assignment to a short description and to where it lives in the code.
+One page that maps every project requirement to a short description and to where it lives in the code.
 This file is identical in both repositories; all links are absolute so they work from either one.
 
 | Repository                | What it is                                                                         | Link                                                       |
@@ -9,9 +9,9 @@ This file is identical in both repositories; all links are absolute so they work
 | **`pulsecrypto-mobile`**  | React Native (Expo) app for Android: watchlist, terminal, telemetry                | [GitHub](https://github.com/PathmikaW/pulsecrypto-mobile)  |
 
 **Jump to:** [Screen recordings and APK](#1-screen-recordings-and-installable-apk) · [Architectural decisions (ADRs)](#2-architectural-decisions-adrs) ·
-[README deliverables](#3-readme-deliverables) · [Backend requirements](#4-functional-requirements--part-1-backend) ·
-[Mobile requirements](#5-functional-requirements--part-2-mobile) · [Non-functional](#6-non-functional-requirements) ·
-[Technology](#7-technology-requirements) · [Beyond the brief](#8-beyond-the-brief)
+[README deliverables](#3-readme-deliverables) · [Backend requirements](#4-functional-requirements--backend) ·
+[Mobile requirements](#5-functional-requirements--mobile) · [Non-functional](#6-non-functional-requirements) ·
+[Technology](#7-technology-requirements) · [Beyond the requirements](#8-beyond-the-requirements)
 
 ---
 
@@ -99,7 +99,7 @@ the index is [`00-overview.md`](https://github.com/PathmikaW/pulsecrypto-backend
 | [`04-tech-stack.md`](https://github.com/PathmikaW/pulsecrypto-backend/blob/main/docs/adr/04-tech-stack.md)                         | Installed versions, environment variables          |
 | [`05-delivery-plan.md`](https://github.com/PathmikaW/pulsecrypto-backend/blob/main/docs/adr/05-delivery-plan.md)                   | Phases, and what is done and not done              |
 | [`06-workflow-and-testing.md`](https://github.com/PathmikaW/pulsecrypto-backend/blob/main/docs/adr/06-workflow-and-testing.md)     | Spec-driven workflow, what the test suites contain |
-| [`07-delivery-and-checklist.md`](https://github.com/PathmikaW/pulsecrypto-backend/blob/main/docs/adr/07-delivery-and-checklist.md) | README plan and the final pre-submission checklist |
+| [`07-delivery-and-checklist.md`](https://github.com/PathmikaW/pulsecrypto-backend/blob/main/docs/adr/07-delivery-and-checklist.md) | README plan and the final pre-release checklist    |
 | [`08-implementation-notes.md`](https://github.com/PathmikaW/pulsecrypto-backend/blob/main/docs/adr/08-implementation-notes.md)     | Easy-to-get-wrong implementation details           |
 | [`09-document-history.md`](https://github.com/PathmikaW/pulsecrypto-backend/blob/main/docs/adr/09-document-history.md)             | Version-by-version change log of the ADR           |
 
@@ -111,7 +111,7 @@ Specs (the exact behaviour each unit was built against):
 
 ## 3. README deliverables
 
-The assignment asks for a README containing six things. Each repository's README has all six as headings.
+The requirements call for a README containing six things. Each repository's README has all six as headings.
 
 | Required content                | Backend README                                                                                                               | Mobile README                                                                                                                                                                                        |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -134,7 +134,7 @@ The AI workflow itself is recorded in the repositories: [`CLAUDE.md`](https://gi
 
 ---
 
-## 4. Functional requirements — Part 1: Backend
+## 4. Functional requirements — Backend
 
 All paths are in [`pulsecrypto-backend`](https://github.com/PathmikaW/pulsecrypto-backend). Layers follow ADR-B7:
 `domain/` (models, ports, services) → `application/` → `infrastructure/` and `api/`.
@@ -152,7 +152,7 @@ All paths are in [`pulsecrypto-backend`](https://github.com/PathmikaW/pulsecrypt
 
 ---
 
-## 5. Functional requirements — Part 2: Mobile
+## 5. Functional requirements — Mobile
 
 All paths are in [`pulsecrypto-mobile`](https://github.com/PathmikaW/pulsecrypto-mobile). Screens live under
 [`src/features/`](https://github.com/PathmikaW/pulsecrypto-mobile/tree/main/src/features); shared building blocks under
@@ -198,7 +198,7 @@ All paths are in [`pulsecrypto-mobile`](https://github.com/PathmikaW/pulsecrypto
 
 ---
 
-## 8. Beyond the brief
+## 8. Beyond the requirements
 
 Extras that were built, each documented and labelled as optional:
 

@@ -1,6 +1,6 @@
 # Stream Processing & Backpressure — Implementation Spec
 
-Source: ADR-B4. Implements the assignment's requirement to buffer/batch updates, emit at a
+Source: ADR-B4. Implements the project's requirement to buffer/batch updates, emit at a
 configurable interval, and prevent slow consumers from causing unbounded memory growth.
 
 ## Conflation (the buffering model)

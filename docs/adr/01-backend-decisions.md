@@ -60,7 +60,7 @@
 
 **Trade-offs accepted.**
 
-- Connection management — registry, backpressure, eviction — is implemented manually rather than inherited from a library. This is an intentional trade: that manual control is exactly what the assignment's backpressure requirement calls for, and delegating it to a library would remove the ability to demonstrate the design explicitly.
+- Connection management — registry, backpressure, eviction — is implemented manually rather than inherited from a library. This is an intentional trade: that manual control is exactly what the project's backpressure requirement calls for, and delegating it to a library would remove the ability to demonstrate the design explicitly.
 
 ---
 
@@ -166,14 +166,14 @@ wss://stream.binance.com:9443/stream?streams=
 **Rationale.**
 
 1. **Correctness over convenience:** the pair list is a fact checked against live data at boot, not a guess frozen at design time — the same principle already applied to `/pairs/meta` sourcing real Binance data instead of fixtures (ADR-B6).
-2. **Guaranteed mandatory scope:** the five required pairs are included unconditionally, so nothing about the "additional pairs" feature can ever regress the assignment's core requirement.
+2. **Guaranteed mandatory scope:** the five required pairs are included unconditionally, so nothing about the "additional pairs" feature can ever regress the project's core requirement.
 3. **Explicit domain judgment:** the exclusion rules (leveraged tokens, stablecoin pairs) encode a real design decision about what belongs in a real-time price viewer, made visible in code and in this document rather than left implicit.
 4. **Single connection, simpler operations:** one combined connection is lower overhead and simpler to reconnect than managing N independent connections.
 
 **Trade-offs accepted.**
 
 - One more startup dependency on Binance's REST API, mitigated by the required-pairs fallback.
-- Slightly more code than a hardcoded array — one resolver module and its tests. If time becomes constrained during implementation, this is the single feature in the overall design that can most safely be scoped back to "required five pairs only, dynamic resolution documented as a stretch idea" without weakening anything the assignment's mandatory requirements actually test.
+- Slightly more code than a hardcoded array — one resolver module and its tests. If time becomes constrained during implementation, this is the single feature in the overall design that can most safely be scoped back to "required five pairs only, dynamic resolution documented as a stretch idea" without weakening anything the project's mandatory requirements actually need.
 - The exact set of additional pairs can differ between restarts as liquidity shifts — documented here as an intentional property, not a defect.
 
 ---
@@ -233,7 +233,7 @@ wss://stream.binance.com:9443/stream?streams=
 
 ### ADR-B5: Buy/Sell Pressure and Spread — Deterministic Calculation
 
-**Context.** The assignment requires Buy Pressure, Sell Pressure, and Spread on the Market Details screen. Left undocumented, "pressure" is an ambiguous term with several reasonable interpretations — it needs one deterministic, testable definition, not an implicit detail buried inside a larger service.
+**Context.** The requirements call for Buy Pressure, Sell Pressure, and Spread on the Market Details screen. Left undocumented, "pressure" is an ambiguous term with several reasonable interpretations — it needs one deterministic, testable definition, not an implicit detail buried inside a larger service.
 
 **Decision.** Compute all three values as pure functions of the top-N order book levels, in `domain/services/PressureCalculator.ts`, with the exact formula documented rather than left implicit in code.
 
@@ -379,7 +379,7 @@ _(v9.1 correction: earlier drafts of this tree listed `api/schemas/` and an inte
 3. **Maintainability:** the Binance adapter, or even the pair-resolution strategy, can change without touching broadcast logic.
 4. **Testability:** domain and application logic can be tested with ports mocked, independent of any real network call; adapters are tested separately against a mock Binance server.
 5. **Extensibility:** adding a second exchange means writing a new adapter implementing `MarketDataSource`, not modifying the domain.
-6. **This is more structure than a three-route service strictly needs on its own — stated honestly.** The layering here is a deliberate application of SOLID, GRASP, and Clean/Hexagonal Architecture, not something a service this size would necessarily converge on by default. Complexity adopted because the evaluation criteria specifically call for it is a different thing than complexity added without a reason — see ADR-X1 and ADR-M6 for the reverse case, where similar-looking structure was removed after review.
+6. **This is more structure than a three-route service strictly needs on its own — stated honestly.** The layering here is a deliberate application of SOLID, GRASP, and Clean/Hexagonal Architecture, not something a service this size would necessarily converge on by default. Complexity adopted because the project's goals specifically call for it (it exists partly to practise and show these patterns) is a different thing than complexity added without a reason — see ADR-X1 and ADR-M6 for the reverse case, where similar-looking structure was removed after review.
 
 **Trade-offs accepted.** More files and folders than a simple MVC layout, and it requires discipline to keep the layers separate — mitigated by the dependency rule above being explicit enough to check mechanically. As of v9.1 it is verified by a grep-based spot check (no import from `infrastructure/` in `domain/`, `application/` or `api/`), not by an ESLint import-restriction rule — adding such a rule remains an open improvement.
 
@@ -416,7 +416,7 @@ _(v9.1 correction: earlier drafts of this tree listed `api/schemas/` and an inte
 
 ### ADR-B9: Security Strategy — Defense in Depth
 
-**Context.** The backend needs protection against common categories of abuse and misconfiguration, including for the parts of the system not being deployed as part of this exercise.
+**Context.** The backend needs protection against common categories of abuse and misconfiguration, including for the parts of the system not deployed as part of this project.
 
 **Decision.** A layered approach:
 
@@ -425,14 +425,14 @@ _(v9.1 correction: earlier drafts of this tree listed `api/schemas/` and an inte
 - **CORS:** allowlist configurable via `ALLOWED_ORIGINS`; the default (empty) is permissive for local development, so a real deployment must set it.
 - **Rate limiting:** `@fastify/rate-limit` on REST endpoints (100 requests/minute per IP).
 - **WebSocket origin checking:** when `ALLOWED_ORIGINS` is set, the `Origin` header is validated on upgrade (empty = no restriction, since native mobile clients send no meaningful browser `Origin`); a per-IP connection cap applies regardless (`MAX_CONNECTIONS_PER_IP`, default 5).
-- **Dependency hygiene:** `pnpm audit --prod` is a manual pre-submission check — there is no CI (ADR-X3). At v9.1 the backend reports no known vulnerabilities.
+- **Dependency hygiene:** `pnpm audit --prod` is a manual pre-release check — there is no CI (ADR-X3). At v9.1 the backend reports no known vulnerabilities.
 - **Container security:** non-root user, minimal base image (`node:24-alpine`).
 - **Transport (documented):** the README states explicitly that a production deployment would sit behind a TLS-terminating load balancer (`wss://`), even though local development runs plaintext `ws://`.
 - **Outbound call discipline:** every call to Binance's REST API — at startup for pair resolution, and on the cached `/pairs/meta` path — is aborted after `PAIR_RESOLUTION_TIMEOUT_MS` (default 5000ms) via an `AbortController`; nothing waits unboundedly. _(v9.1: the `/pairs/meta` path created an `AbortController` that was never armed, so it had no timeout despite this bullet; fixed and covered by a unit test.)_
 
 **Rationale.**
 
-1. These measures apply production-grade discipline to the parts of the system this exercise doesn't deploy, which is the point — a security posture that only exists for the parts being reviewed isn't a real posture.
+1. These measures apply production-grade discipline to the parts of the system this project doesn't deploy, which is the point — a security posture that only exists for the parts being reviewed isn't a real posture.
 2. The specific choices here — rate limiting, origin validation, connection caps — are the standard baseline for any internet-facing real-time service, and are stated as general good practice for a service of this shape rather than as a claim about any particular organization's specific internal security requirements, which aren't something this document has visibility into.
 
 **Trade-offs accepted.** Marginally more setup complexity; rate limiting is tuned generously enough not to interfere with the mobile app's own expected traffic pattern.

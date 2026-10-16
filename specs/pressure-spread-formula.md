@@ -62,7 +62,7 @@ Sell Pressure %  = 100 - 53.87 = 46.13
 ```
 
 Write this exact fixture (or an equivalent one with hand-verified arithmetic) as the first
-unit test for `PressureCalculator` — a reviewer should be able to check the expected values
+unit test for `PressureCalculator` — a reader should be able to check the expected values
 by hand against the formula above.
 
 ## Edge cases — recommended fix
