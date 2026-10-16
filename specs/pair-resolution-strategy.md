@@ -86,7 +86,7 @@ async function resolveSupportedPairs(
 An earlier version of this spec proposed a background retry that would re-attempt full
 resolution after a fallback and reconnect the combined stream with the expanded pair set.
 **It was deliberately not built** (the spec allowed this as a "nice to have" relative to the
-assignment's mandatory scope): resolution runs exactly once per process lifetime, and a
+project's mandatory scope): resolution runs exactly once per process lifetime, and a
 process that fell back to the required five keeps them until it is restarted. The required-
 pairs guarantee is unaffected. `pulsecrypto_supported_pairs_count` (ADR-B8) shows in
 production whether the fallback path was taken.

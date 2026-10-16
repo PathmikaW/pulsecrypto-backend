@@ -63,11 +63,11 @@ for) are normal work and fine to run directly — the boundary is specifically t
 scaffold_, not every subsequent install. See ADR-X5 in the ADR for the full reasoning and
 this same boundary stated for the mobile repo.
 
-## Evaluation context — why "correct-enough" isn't the bar here
+## Quality bar — why "correct-enough" isn't the bar here
 
-This is a practical assignment. The reviewer is
-evaluating the architecture, the specific decisions made and their rationale, and code
-quality — not only whether the app runs. Concretely, this means:
+This project is meant to show engineering quality in public: the architecture, the
+specific decisions made and their rationale, and code quality matter as much as whether
+the app runs. Concretely, this means:
 
 - Follow the stated architecture **literally**, not "in spirit." A dependency-direction
   violation or a reintroduced-and-rejected pattern (e.g. a second backpressure mechanism)
@@ -76,11 +76,11 @@ quality — not only whether the app runs. Concretely, this means:
   Fastify plugin structure, idiomatic Zod schema composition, idiomatic Vitest test
   structure) rather than code that merely works. If you're unsure what's idiomatic for a
   given library, say so rather than guessing.
-- Never take a shortcut that would make the code or the decision look worse under review
+- Never take a shortcut that would make the code or the decision look worse to a reader
   to save time now — flag the tension and ask instead of silently choosing "fast" over
   "correct as specified."
 - Tests and specs are not optional scaffolding to skip when a deadline feels close — the
-  testing strategy itself is part of what's being evaluated.
+  testing strategy itself is part of what this project is meant to show.
 
 ## Authority, in order
 
@@ -168,9 +168,9 @@ actually wrong, say so and ask, don't just build the other thing.
 
 - Latest-state conflation: one `PairState` per pair in an in-memory map, snapshotted and
   broadcast on each `BROADCAST_INTERVAL_MS` tick (default 100ms).
-- Per-client check before each tick's write: if `ws.bufferedAmount > MAX_BUFFERED_BYTES`
-  (default 65536), skip that client for this tick. Track consecutive skips; at
-  `MAX_CONSECUTIVE_SKIPS` (default 10) in a row, disconnect with close code `1013`.
+- Per-client check before each per-pair write: if `ws.bufferedAmount > MAX_BUFFERED_BYTES`
+  (default 65536), skip that message for that client. Track consecutive skipped messages
+  (not ticks); at `MAX_CONSECUTIVE_SKIPS` (default 10), disconnect with close code `1013`.
 - **Do not add a second backpressure mechanism** (a per-client message queue, a
   time-based lag timeout, etc.). This was evaluated and explicitly rejected as redundant
   complexity — see ADR-B4's "Options considered" table. One signal, one consequence.

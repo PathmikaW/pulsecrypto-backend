@@ -6,7 +6,7 @@
 
 **Architectural decisions.** A summary of the ADRs in this document, with rationale and trade-offs.
 
-**Assumptions made.** Binance's public API is reachable; the mobile app and backend share a network during local development; five required pairs satisfy the assignment's mandatory scope; English is the only shipped translation, with the localization infrastructure in place to add more.
+**Assumptions made.** Binance's public API is reachable; the mobile app and backend share a network during local development; five required pairs satisfy the project's mandatory scope; English is the only shipped translation, with the localization infrastructure in place to add more.
 
 **Trade-offs considered.**
 
@@ -24,7 +24,7 @@
 
 ---
 
-## 10. Deliverables — Mapped to the Assignment Brief
+## 10. Deliverables — Mapped to the Requirements
 
 ### 1. Complete Source Code
 
@@ -52,7 +52,7 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 
 ---
 
-## 11. Final Pre-Submission Checklist
+## 11. Final Pre-Release Checklist
 
 **Status as of v9.5 (checks from v9.1 unless noted).** `[x]` means verified against the running system or the code in this session (evidence in the note); `[ ]` means not done, not verifiable here, or needing the developer's own sign-off. Nothing is ticked on the strength of the design alone.
 
@@ -83,11 +83,11 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 - [x] Unit and integration tests are present and passing, including pair-resolver and pressure-calculator coverage — _backend 54/54 (13 files), mobile 71/71 (14 suites)_
 - [ ] Implemented screens match the Figma mockup referenced at the top of this document — including the "Terminal" and "Telemetry & Settings" screens and account drawer, built at full fidelity per ADR-M10, and the freshly-designed "Markets" screen visually consistent with `design-tokens.md` — _needs the developer's own sign-off; emulator screenshots look consistent_
 - [ ] Every screen draws colors/type/spacing from `core/theme/` (sourced from `specs/design-tokens.md`), not a hardcoded literal — including the Markets screen, which has no Figma frame to check against — _not audited exhaustively; a few literal values exist (e.g. shadow colors, one `rgba` border)_
-- [x] Telemetry & Settings' non-backed controls (throttling slider/toggles) and the account drawer's account-management links are documented in the README as intentionally display-only (ADR-M10) — not left for a reviewer to discover unexplained — _mobile README documents this_
+- [x] Telemetry & Settings' non-backed controls (throttling slider/toggles) and the account drawer's account-management links are documented in the README as intentionally display-only (ADR-M10) — not left for a reader to discover unexplained — _mobile README documents this_
 - [x] Telemetry's WS message-rate (and, if implemented, JS-thread FPS) reflect real measured values, not static mockups — _JS FPS read live on the emulator; message rate is counted per second in `WebSocketSource`_
 - [x] The README is complete (setup, architecture, ADRs, trade-offs, AI usage, pair-resolution strategy, localization approach) and any claim about a third party's technology choices is stated consistently everywhere it appears in the document — _both READMEs revised in v9.1_
 - [ ] Screen recording demonstrates the required functionality, ideally including the dynamically-resolved additional pairs alongside the required five — _only the developer can record this; the emulator flows above can be reused as the script_
-- [x] **The mobile app was built and run on the Android Emulator via `npx expo run:android`, and the screen recording is captured from that build** — this is the assignment's explicit, required target platform (§1 "Technology Requirements"); iOS Simulator is optional and does not substitute for it — _built with `pnpm expo run:android` earlier; re-verified in v9.1 on the Pixel 8 API 35 emulator via the dev client. The recording itself is still to be captured_
+- [x] **The mobile app was built and run on the Android Emulator via `npx expo run:android`, and the screen recording is captured from that build** — this is the project's explicit, required target platform (§1 "Technology Requirements"); iOS Simulator is optional and does not substitute for it — _built with `pnpm expo run:android` earlier; re-verified in v9.1 on the Pixel 8 API 35 emulator via the dev client. The recording itself is still to be captured_
 - [x] Docker build and run succeed for the backend — _verified on a Linux VM (Amazon Linux 2023): the first build failed on a missing `pnpm-workspace.yaml` copy, fixed, then `/health`, `/pairs/meta` and the WebSocket (8 pairs) served from the container. `docker-compose up` itself was not run (ADR-X4)_
 - [ ] CI passes on both repositories, including the mandatory contracts-drift check — _NOT done — no CI exists (ADR-X3)_
 - [x] All package versions were verified against `pnpm info <package> version` at scaffold time, not assumed from this document's snapshot (§5) — _§5 now lists the installed versions_
@@ -101,6 +101,6 @@ Covering setup, build/run instructions, architectural decisions with rationale a
 - [x] REST failures are normalized to one `AppError` model, retried only when retryable (max 3, exponential backoff with jitter, shared with the WebSocket reconnect arithmetic), and surfaced as localized messages — _ADR-M12; unit-tested through a real `QueryClient` and exercised on the Android Emulator against a fake backend (503×3 → recovers; persistent 503 → stops after 4 attempts; 404 → 1 attempt)_
 - [x] `release/v1.0.0` cut from `develop`, merged into `main` with a `v1.0.0` tag, and merged back into `develop` — _done in both repositories: `release/v1.0.0` matched `develop`, was merged into `main` (merge commit), tagged `v1.0.0`, and `main` was merged back into `develop` (ADR-X2)_
 - [x] A shareable release build exists and was tested on a physical Android phone against the hosted backend — _EAS `preview` profile (`pnpm` project, release APK for arm64-v8a only, about a third of the all-ABI size) pointing at the AWS-hosted backend over `https://`/`wss://`; the release bundle needed `react-native-worklets` and `babel-preset-expo` as direct dependencies under pnpm's strict layout (v9.5). The backend runs on a t3.micro EC2 instance behind Caddy with a DuckDNS hostname (`pulsecrypto-backend/docs/deployment-aws-ec2.md`); it is stopped when not in use_
-- [ ] Run the manual gates before submitting: `pnpm audit --prod` (backend clean; mobile 1 moderate transitive `uuid` advisory via Expo config plugins), `pnpm run check:contracts` (mobile)
+- [ ] Run the manual gates before releasing: `pnpm audit --prod` (backend clean; mobile 1 moderate transitive `uuid` advisory via Expo config plugins), `pnpm run check:contracts` (mobile)
 
 ---

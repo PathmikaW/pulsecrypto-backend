@@ -76,7 +76,7 @@
 | `ORDER_BOOK_PRESSURE_DEPTH`  | `10`                                       | Order book levels used in the pressure calculation (ADR-B5) — deliberately decoupled from the Binance subscription depth |
 | `BROADCAST_INTERVAL_MS`      | `100`                                      | Conflation tick / broadcast interval — also the basis for the mobile client's liveness timeout (ADR-M6)                  |
 | `MAX_BUFFERED_BYTES`         | `65536`                                    | Per-client backpressure threshold                                                                                        |
-| `MAX_CONSECUTIVE_SKIPS`      | `10`                                       | Ticks a client can be skipped before eviction                                                                            |
+| `MAX_CONSECUTIVE_SKIPS`      | `10`                                       | Consecutive skipped messages (one per pair per tick) before a client is evicted (ADR-B4)                                 |
 | `BINANCE_REST_BASE_URL`      | `https://api.binance.com`                  | Overridable for tests / a testnet                                                                                        |
 | `BINANCE_WS_BASE_URL`        | `wss://stream.binance.com:9443/stream`     | Overridable for tests / a testnet                                                                                        |
 | `ALLOWED_ORIGINS`            | _(empty)_                                  | Comma-separated CORS and WebSocket `Origin` allowlist; empty = unrestricted (ADR-B9)                                     |

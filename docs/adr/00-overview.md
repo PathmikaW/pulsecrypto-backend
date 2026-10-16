@@ -3,7 +3,7 @@
 ### Real-Time Cryptocurrency Market Viewer — Technical Design & Rationale
 
 **Document type:** Architecture Decision Record (ADR)
-**Version:** 9.5
+**Version:** 9.7
 **Status:** Approved for implementation — reconciled against the completed solution (v9.1); where an earlier section describes a design that was not built, a dated note says so
 
 ---
@@ -14,7 +14,7 @@ This document records the architectural decisions behind PulseCrypto ahead of im
 
 The reasoning behind a decision is what makes it possible to evaluate, maintain, and safely change later — the goal is that another engineer can see not just what was built, but why, and what alternatives were weighed and rejected.
 
-Two inputs shaped every decision below: the assignment's explicit functional and non-functional requirements, and the broader engineering expectations for a maintainable, production-grade system. Where a minimal implementation and a production-grade one would diverge, this document is explicit about which was chosen and why — the target throughout was a design defensible as something that could genuinely ship, not one scoped only to satisfy a checklist. Equally, where a production-grade pattern would have introduced complexity or risk disproportionate to what it protects against in this specific context, that's stated plainly too — production-grade thinking includes knowing when _not_ to add a layer, not only when to add one.
+Two inputs shaped every decision below: the project's explicit functional and non-functional requirements, and the broader engineering expectations for a maintainable, production-grade system. Where a minimal implementation and a production-grade one would diverge, this document is explicit about which was chosen and why — the target throughout was a design defensible as something that could genuinely ship, not one scoped only to satisfy a checklist. Equally, where a production-grade pattern would have introduced complexity or risk disproportionate to what it protects against in this specific context, that's stated plainly too — production-grade thinking includes knowing when _not_ to add a layer, not only when to add one.
 
 ---
 
@@ -26,9 +26,9 @@ This document governs architecture, data flow, state management, and behavior. I
 
 **This conflict was found, not hypothetical (see ADR-M10).** The Figma file's two designed
 screens ("Trading Terminal," "Telemetry & Settings") don't map one-to-one onto the
-assignment's four required mobile screens — it's missing the watchlist and contains
+project's four required mobile screens — it's missing the watchlist and contains
 significant content (an account-management drawer, a developer telemetry dashboard) the
-assignment never asks for. Resolved explicitly, per the principle above, in ADR-M10: build
+requirements never ask for. Resolved explicitly, per the principle above, in ADR-M10: build
 what Figma provides at full fidelity, design what it's missing (Markets/Watchlist) fresh in
 the same verified visual language. Design tokens (colors, typography, spacing, radii) were
 pulled from Figma's REST API, not estimated — see `pulsecrypto-mobile/specs/design-tokens.md`.
@@ -40,7 +40,7 @@ pulled from Figma's REST API, not estimated — see `pulsecrypto-mobile/specs/de
 **This ADR is split into topic files — read only the one(s) your current task needs, not
 all of them.** This file (the overview) plus the relevant decision file is almost always
 enough; the rest (delivery plan, checklist, document history) matter mainly for planning
-and pre-submission work, not day-to-day implementation. See ADR-X7 in
+and pre-release work, not day-to-day implementation. See ADR-X7 in
 `03-cross-cutting-decisions.md` for the full rationale behind this split.
 
 **This overview file is identical in all three locations it lives** — the project root
@@ -56,7 +56,7 @@ it (backend skips mobile decisions, mobile skips backend decisions), noted per l
 5. [Technology Stack Summary](04-tech-stack.md) — versions, env vars. All three locations.
 6. [Delivery Plan](05-delivery-plan.md) — phase sequence. All three locations.
 7. [Development Workflow & Testing Strategy](06-workflow-and-testing.md) — spec-driven development, test coverage expectations. All three locations.
-8. [README, Deliverables & Final Checklist](07-delivery-and-checklist.md) — relevant near submission, not during day-to-day implementation. All three locations.
+8. [README, Deliverables & Final Checklist](07-delivery-and-checklist.md) — relevant near a release, not during day-to-day implementation. All three locations.
 9. [Implementation Notes — Precision Details](08-implementation-notes.md) — six easy-to-get-subtly-wrong details, worth a check regardless of which feature you're on. All three locations.
 10. [Document History](09-document-history.md) — full version-by-version change log. All three locations.
 
@@ -74,9 +74,9 @@ PulseCrypto is a real-time cryptocurrency market viewer consisting of a Node.js 
 The system is designed around five structural principles, each expanded into concrete decisions in the sections that follow:
 
 - **Correctness of the required scope is never conditional.** The five mandatory trading pairs are always served, regardless of the state of any optional or dynamic feature.
-- **Memory and performance bounds are structural, not tuned.** Backpressure and buffering are designed so that the failure modes the assignment calls out — unbounded memory growth under slow consumers, UI jank under sustained bursts — are prevented by the shape of the design, not by adjusting constants after the fact.
+- **Memory and performance bounds are structural, not tuned.** Backpressure and buffering are designed so that the failure modes the requirements call out — unbounded memory growth under slow consumers, UI jank under sustained bursts — are prevented by the shape of the design, not by adjusting constants after the fact.
 - **Architecture boundaries are enforced, not just named.** Both the backend and mobile codebases use structures where the dependency direction is explicit and checkable, consistent with the SOLID, GRASP, and Clean/Hexagonal Architecture principles the design follows.
 - **External facts are verified, not assumed.** Where a decision rests on a claim about the current state of a library, a company's technology choices, a third-party service's behavior, or live market data, that claim is checked against a current source rather than taken from memory — and documented with appropriate honesty, including counter-evidence where it exists. This includes the technology stack's version numbers themselves (§5), checked as of this document's date rather than assumed from training knowledge.
-- **Complexity is added deliberately, in both directions.** Some decisions add structure the assignment doesn't strictly require, because production-grade standards call for it (see ADR-B7, ADR-M2, ADR-M9). Others were initially over-built and were simplified after review, because the risk or overhead didn't match what was actually being protected against (see ADR-X1, ADR-M6). Both are the same underlying discipline applied honestly, not a bias toward adding layers.
+- **Complexity is added deliberately, in both directions.** Some decisions add structure the requirements don't strictly call for, because production-grade standards call for it (see ADR-B7, ADR-M2, ADR-M9). Others were initially over-built and were simplified after review, because the risk or overhead didn't match what was actually being protected against (see ADR-X1, ADR-M6). Both are the same underlying discipline applied honestly, not a bias toward adding layers.
 
 ---
